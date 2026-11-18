@@ -1,0 +1,68 @@
+[
+  {
+    "_id": "plan_1m",
+    "gymId": "gym_fitzone_01",
+    "name": "Monthly Standard",
+    "durationDays": 30,
+    "price": 2000,
+    "description": "Full gym floor & cardio access for 30 days",
+    "active": true,
+    "createdAt": "2026-11-18T07:55:45.479Z",
+    "updatedAt": "2026-11-18T07:55:45.479Z"
+  },
+  {
+    "_id": "plan_3m",
+    "gymId": "gym_fitzone_01",
+    "name": "Quarterly Transformation",
+    "durationDays": 90,
+    "price": 5200,
+    "description": "3 months gym floor + 1 steam bath session",
+    "active": true,
+    "createdAt": "2026-11-18T07:55:45.483Z",
+    "updatedAt": "2026-11-18T07:55:45.483Z"
+  },
+  {
+    "_id": "plan_6m",
+    "gymId": "gym_fitzone_01",
+    "name": "Half-Yearly Elite",
+    "durationDays": 180,
+    "price": 9500,
+    "description": "6 months access + personalized workout routine",
+    "active": true,
+    "createdAt": "2026-11-18T07:55:45.487Z",
+    "updatedAt": "2026-11-18T07:55:45.487Z"
+  },
+  {
+    "_id": "plan_1y",
+    "gymId": "gym_fitzone_01",
+    "name": "Annual Champion",
+    "durationDays": 365,
+    "price": 16000,
+    "description": "365 days unlimited gym, cardio, steam & locker access",
+    "active": true,
+    "createdAt": "2026-11-18T07:55:45.489Z",
+    "updatedAt": "2026-11-18T07:55:45.489Z"
+  },
+  {
+    "_id": "plan_custom",
+    "gymId": "gym_fitzone_01",
+    "name": "Custom Flexi",
+    "durationDays": 45,
+    "price": 3000,
+    "description": "Custom tailored plan",
+    "active": true,
+    "createdAt": "2026-11-18T07:55:45.491Z",
+    "updatedAt": "2026-11-18T07:55:45.491Z"
+  },
+  {
+    "gymId": "gym_fitzone_01",
+    "name": "Couple",
+    "durationDays": 30,
+    "price": 3000,
+    "description": "",
+    "active": true,
+    "_id": "id_1794993719047_uqll6s",
+    "createdAt": "2026-11-18T09:21:59.047Z",
+    "updatedAt": "2026-11-18T09:21:59.047Z"
+  }
+]

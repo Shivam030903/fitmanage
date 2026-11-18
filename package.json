@@ -1,0 +1,15 @@
+{
+  "name": "fitmanage",
+  "version": "1.0.0",
+  "description": "FitManage - Gym Management System: Web App & Installable PWA",
+  "type": "module",
+  "scripts": {
+    "dev": "node run.js",
+    "start": "node run.js",
+    "server": "cd server && npm start",
+    "client": "cd client && npm run dev"
+  },
+  "keywords": ["gym-management", "pwa", "fitness", "react", "express", "crm"],
+  "author": "FitManage Team",
+  "license": "MIT"
+}

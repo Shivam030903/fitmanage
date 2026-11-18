@@ -1,0 +1,62 @@
+[
+  {
+    "gymId": "gym_fitzone_01",
+    "customerId": "FIT-1001",
+    "membershipId": "id_1794994130228_i5xa95",
+    "totalAmount": 16000,
+    "amountPaid": 16000,
+    "pendingAmount": 0,
+    "paymentMethod": "UPI",
+    "paymentDate": "2026-11-18",
+    "transactionReference": "PAY-130229",
+    "notes": "Initial full payment",
+    "createdAt": "2026-11-18T09:28:50.229Z",
+    "_id": "id_1794994130229_3amkpk",
+    "updatedAt": "2026-11-18T09:28:50.229Z"
+  },
+  {
+    "gymId": "gym_fitzone_01",
+    "customerId": "FIT-1001",
+    "membershipId": "id_1794994199642_ldg84n",
+    "totalAmount": 16000,
+    "amountPaid": 16000,
+    "pendingAmount": 0,
+    "paymentMethod": "UPI",
+    "paymentDate": "2027-11-19",
+    "transactionReference": "PAY-199643",
+    "notes": "Renewal full payment",
+    "createdAt": "2026-11-18T09:29:59.643Z",
+    "_id": "id_1794994199643_xrnk8t",
+    "updatedAt": "2026-11-18T09:29:59.643Z"
+  },
+  {
+    "gymId": "gym_fitzone_01",
+    "customerId": "FIT-1002",
+    "membershipId": "id_1794994327288_elo4qm",
+    "totalAmount": 2000,
+    "amountPaid": 2000,
+    "pendingAmount": 0,
+    "paymentMethod": "Cash",
+    "paymentDate": "2026-10-22",
+    "transactionReference": "PAY-327289",
+    "notes": "Initial full payment",
+    "createdAt": "2026-11-18T09:32:07.289Z",
+    "_id": "id_1794994327289_d86lj9",
+    "updatedAt": "2026-11-18T09:32:07.289Z"
+  },
+  {
+    "gymId": "gym_fitzone_01",
+    "customerId": "FIT-1003",
+    "membershipId": "id_1794994777088_exart3",
+    "totalAmount": 2000,
+    "amountPaid": 2000,
+    "pendingAmount": 0,
+    "paymentMethod": "UPI",
+    "paymentDate": "2026-10-01",
+    "transactionReference": "PAY-777090",
+    "notes": "Initial full payment",
+    "createdAt": "2026-11-18T09:39:37.090Z",
+    "_id": "id_1794994777090_qchx2p",
+    "updatedAt": "2026-11-18T09:39:37.090Z"
+  }
+]

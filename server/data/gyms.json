@@ -1,0 +1,32 @@
+[
+  {
+    "_id": "gym_fitzone_01",
+    "gymName": "Royal Gym 2.0",
+    "tagline": "Transforming Lives, Building Strength",
+    "address": "near sachin medical store",
+    "phone": "+91 98200 12345",
+    "email": "contact@fitzonepro.in",
+    "gstin": "",
+    "settings": {
+      "currency": "INR",
+      "currencySymbol": "₹",
+      "timezone": "Asia/Kolkata",
+      "expiryReminderDays": [
+        7,
+        3,
+        1,
+        0,
+        -1
+      ],
+      "allowPartialAccess": true,
+      "whatsappTemplates": {
+        "expiringSoon": "Hello {customerName}! 👋\nYour gym membership at {gymName} is expiring on {expiryDate} ({daysRemaining} days left).\nWe would love to continue having you with us! Please visit reception or renew via UPI/Cash to maintain your streak. 💪",
+        "expired": "Hello {customerName}!\nYour gym membership at {gymName} expired on {expiryDate}. We hope you enjoyed your fitness journey with us.\nWould you like to renew? We have special renewal benefits waiting for you! 🏋️‍♂️\nRegards, {gymName} Team",
+        "paymentDue": "Hello {customerName}! 👋\nThis is a friendly reminder regarding your pending balance of ₹{pendingAmount} for your {planName} membership at {gymName}.\nPlease clear this at the reception desk. Thank you! 🙏",
+        "welcome": "Welcome to {gymName}, {customerName}! 🎉\nYour {planName} membership is active until {expiryDate}.\nLet's achieve your fitness goals together! Feel free to ask our trainers anytime. 🚀"
+      }
+    },
+    "createdAt": "2026-11-18T07:55:45.466Z",
+    "updatedAt": "2026-11-18T09:21:31.298Z"
+  }
+]

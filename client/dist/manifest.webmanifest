@@ -1,0 +1,42 @@
+{
+  "name": "FitManage - Gym Management System",
+  "short_name": "FitManage",
+  "description": "Smart, modern Gym & Fitness Studio Operations, Subscriptions and WhatsApp Reminders",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0f172a",
+  "theme_color": "#0f172a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/logo.svg",
+      "sizes": "192x192 512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ],
+  "categories": ["business", "productivity", "fitness"],
+  "shortcuts": [
+    {
+      "name": "Add Customer",
+      "short_name": "New Member",
+      "description": "Register a new gym member",
+      "url": "/customers/new",
+      "icons": [{ "src": "/logo.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Expiring Reminders",
+      "short_name": "Reminders",
+      "description": "Send WhatsApp renewal reminders",
+      "url": "/reminders",
+      "icons": [{ "src": "/logo.svg", "sizes": "192x192" }]
+    },
+    {
+      "name": "Record Payment",
+      "short_name": "Payments",
+      "description": "Collect payment and print receipt",
+      "url": "/payments",
+      "icons": [{ "src": "/logo.svg", "sizes": "192x192" }]
+    }
+  ]
+}

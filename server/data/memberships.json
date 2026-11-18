@@ -1,0 +1,57 @@
+[
+  {
+    "gymId": "gym_fitzone_01",
+    "customerId": "FIT-1001",
+    "planName": "Annual Champion",
+    "startDate": "2026-11-18",
+    "endDate": "2027-11-18",
+    "amount": 16000,
+    "status": "active",
+    "createdBy": "Vikram Singhania",
+    "createdAt": "2026-11-18T09:28:50.228Z",
+    "_id": "id_1794994130228_i5xa95",
+    "updatedAt": "2026-11-18T09:28:50.228Z"
+  },
+  {
+    "gymId": "gym_fitzone_01",
+    "customerId": "FIT-1001",
+    "planName": "Annual Champion",
+    "startDate": "2027-11-19",
+    "endDate": "2028-11-18",
+    "amount": 16000,
+    "status": "upcoming",
+    "isRenewal": true,
+    "renewedFrom": null,
+    "notes": "",
+    "createdBy": "Vikram Singhania",
+    "createdAt": "2026-11-18T09:29:59.642Z",
+    "_id": "id_1794994199642_ldg84n",
+    "updatedAt": "2026-11-18T09:29:59.642Z"
+  },
+  {
+    "gymId": "gym_fitzone_01",
+    "customerId": "FIT-1002",
+    "planName": "Monthly Standard",
+    "startDate": "2026-10-22",
+    "endDate": "2026-11-21",
+    "amount": 2000,
+    "status": "expiring_soon",
+    "createdBy": "Vikram Singhania",
+    "createdAt": "2026-11-18T09:32:07.288Z",
+    "_id": "id_1794994327288_elo4qm",
+    "updatedAt": "2026-11-18T09:32:07.288Z"
+  },
+  {
+    "gymId": "gym_fitzone_01",
+    "customerId": "FIT-1003",
+    "planName": "Monthly Standard",
+    "startDate": "2026-10-01",
+    "endDate": "2026-10-31",
+    "amount": 2000,
+    "status": "expired",
+    "createdBy": "Vikram Singhania",
+    "createdAt": "2026-11-18T09:39:37.088Z",
+    "_id": "id_1794994777088_exart3",
+    "updatedAt": "2026-11-18T09:39:37.088Z"
+  }
+]

@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" fill="none">
+  <defs>
+    <linearGradient id="gymGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#10b981" />
+      <stop offset="100%" stop-color="#059669" />
+    </linearGradient>
+    <filter id="shadow" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="4" stdDeviation="4" flood-color="#059669" flood-opacity="0.25"/>
+    </filter>
+  </defs>
+  <rect width="100" height="100" rx="24" fill="#0f172a" />
+  <g transform="translate(18, 18)" filter="url(#shadow)">
+    <!-- Dumbbell / Energy Fit Icon -->
+    <rect x="2" y="24" width="8" height="16" rx="3" fill="url(#gymGrad)" />
+    <rect x="12" y="28" width="6" height="8" rx="2" fill="url(#gymGrad)" />
+    <rect x="18" y="30" width="28" height="4" rx="2" fill="#e2e8f0" />
+    <rect x="46" y="28" width="6" height="8" rx="2" fill="url(#gymGrad)" />
+    <rect x="54" y="24" width="8" height="16" rx="3" fill="url(#gymGrad)" />
+    <!-- Dynamic Lightning / Pulse Accent -->
+    <path d="M30 10 L38 24 L31 24 L36 38 L24 22 L31 22 Z" fill="#34d399" opacity="0.9" />
+  </g>
+</svg>

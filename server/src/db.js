@@ -1,0 +1,487 @@
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import bcrypt from 'bcryptjs';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+const DATA_DIR = path.resolve(__dirname, '../data');
+
+if (!fs.existsSync(DATA_DIR)) {
+  fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+// Helper to calculate membership status based on current date
+export function calculateMembershipStatus(startDateStr, endDateStr, isCancelled = false) {
+  if (isCancelled) return 'cancelled';
+  if (!startDateStr || !endDateStr) return 'unsubscribed';
+
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  const start = new Date(startDateStr);
+  start.setHours(0, 0, 0, 0);
+
+  const end = new Date(endDateStr);
+  end.setHours(23, 59, 59, 999);
+
+  if (start > now) {
+    return 'upcoming';
+  }
+
+  if (now > end) {
+    return 'expired';
+  }
+
+  // Calculate days remaining
+  const diffTime = end.getTime() - now.getTime();
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+  if (diffDays <= 7) {
+    return 'expiring_soon';
+  }
+
+  return 'active';
+}
+
+export function getDaysRemaining(endDateStr) {
+  if (!endDateStr) return 0;
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+  const end = new Date(endDateStr);
+  end.setHours(23, 59, 59, 999);
+  const diffTime = end.getTime() - now.getTime();
+  return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+}
+
+class JsonCollection {
+  constructor(name) {
+    this.name = name;
+    this.filePath = path.join(DATA_DIR, `${name}.json`);
+    this.data = this.load();
+  }
+
+  load() {
+    try {
+      if (fs.existsSync(this.filePath)) {
+        const raw = fs.readFileSync(this.filePath, 'utf-8');
+        return JSON.parse(raw);
+      }
+    } catch (e) {
+      console.error(`Error loading collection ${this.name}:`, e);
+    }
+    return [];
+  }
+
+  save() {
+    try {
+      fs.writeFileSync(this.filePath, JSON.stringify(this.data, null, 2), 'utf-8');
+    } catch (e) {
+      console.error(`Error saving collection ${this.name}:`, e);
+    }
+  }
+
+  find(query = {}) {
+    return this.data.filter(item => {
+      for (const key of Object.keys(query)) {
+        if (typeof query[key] === 'object' && query[key] !== null) {
+          if (query[key].$in && !query[key].$in.includes(item[key])) return false;
+          if (query[key].$ne && item[key] === query[key].$ne) return false;
+        } else if (item[key] !== query[key]) {
+          return false;
+        }
+      }
+      return true;
+    });
+  }
+
+  findOne(query = {}) {
+    return this.find(query)[0] || null;
+  }
+
+  findById(id) {
+    return this.findOne({ _id: id });
+  }
+
+  insertOne(doc) {
+    const _id = doc._id || `id_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const newDoc = {
+      ...doc,
+      _id,
+      createdAt: doc.createdAt || new Date().toISOString(),
+      updatedAt: doc.updatedAt || new Date().toISOString()
+    };
+    this.data.push(newDoc);
+    this.save();
+    return newDoc;
+  }
+
+  updateOne(query, updateData) {
+    const item = this.findOne(query);
+    if (!item) return null;
+    Object.assign(item, updateData, { updatedAt: new Date().toISOString() });
+    this.save();
+    return item;
+  }
+
+  deleteOne(query) {
+    const idx = this.data.findIndex(item => {
+      for (const key of Object.keys(query)) {
+        if (item[key] !== query[key]) return false;
+      }
+      return true;
+    });
+    if (idx !== -1) {
+      const removed = this.data.splice(idx, 1)[0];
+      this.save();
+      return removed;
+    }
+    return null;
+  }
+
+  count(query = {}) {
+    return this.find(query).length;
+  }
+}
+
+export const db = {
+  users: new JsonCollection('users'),
+  gyms: new JsonCollection('gyms'),
+  customers: new JsonCollection('customers'),
+  memberships: new JsonCollection('memberships'),
+  payments: new JsonCollection('payments'),
+  reminderLogs: new JsonCollection('reminderLogs'),
+  plans: new JsonCollection('plans')
+};
+
+// Seed realistic Indian Gym data if empty
+export async function seedInitialData() {
+  if (db.gyms.count() > 0) return;
+
+  console.log('Seeding initial FitManage gym data...');
+
+  const gymId = 'gym_fitzone_01';
+  db.gyms.insertOne({
+    _id: gymId,
+    gymName: 'FitZone Pro Fitness Club',
+    tagline: 'Transforming Lives, Building Strength',
+    address: 'Plot 42, 3rd Floor, Linking Road, Bandra West, Mumbai, Maharashtra 400050',
+    phone: '+91 98200 12345',
+    email: 'contact@fitzonepro.in',
+    gstin: '27AABCU9603R1ZM',
+    settings: {
+      currency: 'INR',
+      currencySymbol: '₹',
+      timezone: 'Asia/Kolkata',
+      expiryReminderDays: [7, 3, 1, 0, -1],
+      allowPartialAccess: true,
+      whatsappTemplates: {
+        expiringSoon: `Hello {customerName}! 👋\nYour gym membership at {gymName} is expiring on {expiryDate} ({daysRemaining} days left).\nWe would love to continue having you with us! Please visit reception or renew via UPI/Cash to maintain your streak. 💪`,
+        expired: `Hello {customerName}!\nYour gym membership at {gymName} expired on {expiryDate}. We hope you enjoyed your fitness journey with us.\nWould you like to renew? We have special renewal benefits waiting for you! 🏋️‍♂️\nRegards, {gymName} Team`,
+        paymentDue: `Hello {customerName}! 👋\nThis is a friendly reminder regarding your pending balance of ₹{pendingAmount} for your {planName} membership at {gymName}.\nPlease clear this at the reception desk. Thank you! 🙏`,
+        welcome: `Welcome to {gymName}, {customerName}! 🎉\nYour {planName} membership is active until {expiryDate}.\nLet's achieve your fitness goals together! Feel free to ask our trainers anytime. 🚀`
+      }
+    }
+  });
+
+  // Default Membership Plans
+  const plansData = [
+    { _id: 'plan_1m', gymId, name: 'Monthly Standard', durationDays: 30, price: 2000, description: 'Full gym floor & cardio access for 30 days', active: true },
+    { _id: 'plan_3m', gymId, name: 'Quarterly Transformation', durationDays: 90, price: 5200, description: '3 months gym floor + 1 steam bath session', active: true },
+    { _id: 'plan_6m', gymId, name: 'Half-Yearly Elite', durationDays: 180, price: 9500, description: '6 months access + personalized workout routine', active: true },
+    { _id: 'plan_1y', gymId, name: 'Annual Champion', durationDays: 365, price: 16000, description: '365 days unlimited gym, cardio, steam & locker access', active: true },
+    { _id: 'plan_custom', gymId, name: 'Custom Flexi', durationDays: 45, price: 3000, description: 'Custom tailored plan', active: true }
+  ];
+  plansData.forEach(p => db.plans.insertOne(p));
+
+  // Users: Owner and Staff
+  const salt = await bcrypt.genSalt(10);
+  const passwordHash = await bcrypt.hash('password123', salt);
+
+  db.users.insertOne({
+    _id: 'user_owner_01',
+    name: 'Vikram Singhania',
+    email: 'owner@fitmanage.io',
+    password: passwordHash,
+    role: 'owner',
+    phone: '+91 98200 99999',
+    gymId
+  });
+
+  db.users.insertOne({
+    _id: 'user_reception_01',
+    name: 'Pooja Sharma',
+    email: 'receptionist@fitmanage.io',
+    password: passwordHash,
+    role: 'receptionist',
+    phone: '+91 98200 88888',
+    gymId
+  });
+
+  // Helper date generators relative to today
+  const now = new Date();
+  const formatIsoDate = (d) => d.toISOString().split('T')[0];
+  const addDays = (d, n) => {
+    const copy = new Date(d);
+    copy.setDate(copy.getDate() + n);
+    return copy;
+  };
+
+  const seedCustomers = [
+    {
+      _id: 'cust_01',
+      gymId,
+      customerId: 'FIT-1001',
+      name: 'Rahul Sharma',
+      gender: 'Male',
+      dateOfBirth: '1996-05-14',
+      contacts: {
+        primary: '9820111001',
+        secondary: '9820111002',
+        emergency: '9820111003'
+      },
+      address: 'B-402, Sea View Apts, Khar West, Mumbai',
+      notes: 'Focusing on strength training and weight gain. Prefers evening workouts.',
+      planName: 'Monthly Standard',
+      startDate: formatIsoDate(addDays(now, -28)),
+      endDate: formatIsoDate(addDays(now, 2)), // Expiring in 2 days
+      amount: 2000,
+      paid: 1500, // Pending 500
+      paymentMethod: 'UPI'
+    },
+    {
+      _id: 'cust_02',
+      gymId,
+      customerId: 'FIT-1002',
+      name: 'Aman Verma',
+      gender: 'Male',
+      dateOfBirth: '1993-11-20',
+      contacts: {
+        primary: '9711222001',
+        secondary: '9711222002',
+        emergency: '9711222003'
+      },
+      address: 'Flat 12, Hill Road, Bandra West, Mumbai',
+      notes: 'Former powerlifter, prefers early morning 6 AM slots.',
+      planName: 'Quarterly Transformation',
+      startDate: formatIsoDate(addDays(now, -94)),
+      endDate: formatIsoDate(addDays(now, -4)), // Expired 4 days ago
+      amount: 5200,
+      paid: 5200,
+      paymentMethod: 'Debit/Credit Card'
+    },
+    {
+      _id: 'cust_03',
+      gymId,
+      customerId: 'FIT-1003',
+      name: 'Priya Singh',
+      gender: 'Female',
+      dateOfBirth: '1998-03-22',
+      contacts: {
+        primary: '9930333001',
+        secondary: '9930333002',
+        emergency: '9930333003'
+      },
+      address: '701, Green Heights, Santacruz West, Mumbai',
+      notes: 'Interested in HIIT and functional fitness.',
+      planName: 'Annual Champion',
+      startDate: formatIsoDate(addDays(now, -45)),
+      endDate: formatIsoDate(addDays(now, 320)), // Active for 320 days
+      amount: 16000,
+      paid: 16000,
+      paymentMethod: 'UPI'
+    },
+    {
+      _id: 'cust_04',
+      gymId,
+      customerId: 'FIT-1004',
+      name: 'Rohan Gupta',
+      gender: 'Male',
+      dateOfBirth: '1991-08-09',
+      contacts: {
+        primary: '9876543210',
+        secondary: '',
+        emergency: '9876543299'
+      },
+      address: '304, Palm Springs, Andheri West, Mumbai',
+      notes: 'Has slight lower back stiffness, recommended light warmup.',
+      planName: 'Half-Yearly Elite',
+      startDate: formatIsoDate(addDays(now, -179)),
+      endDate: formatIsoDate(addDays(now, 1)), // Expiring tomorrow!
+      amount: 9500,
+      paid: 8500, // Pending 1000
+      paymentMethod: 'Cash'
+    },
+    {
+      _id: 'cust_05',
+      gymId,
+      customerId: 'FIT-1005',
+      name: 'Ananya Desai',
+      gender: 'Female',
+      dateOfBirth: '1995-12-05',
+      contacts: {
+        primary: '9123456789',
+        secondary: '9123456780',
+        emergency: ''
+      },
+      address: '15, Gulmohar Cross Rd, Juhu, Mumbai',
+      notes: 'Was traveling out of town, wants to renew next week.',
+      planName: 'Monthly Standard',
+      startDate: formatIsoDate(addDays(now, -40)),
+      endDate: formatIsoDate(addDays(now, -10)), // Expired 10 days ago
+      amount: 2000,
+      paid: 2000,
+      paymentMethod: 'UPI'
+    },
+    {
+      _id: 'cust_06',
+      gymId,
+      customerId: 'FIT-1006',
+      name: 'Vikram Malhotra',
+      gender: 'Male',
+      dateOfBirth: '1989-04-18',
+      contacts: {
+        primary: '9892012345',
+        secondary: '',
+        emergency: '9892054321'
+      },
+      address: '22, Pali Hill, Bandra West, Mumbai',
+      notes: 'Regular member since 2024. Bodybuilding focus.',
+      planName: 'Quarterly Transformation',
+      startDate: formatIsoDate(addDays(now, -30)),
+      endDate: formatIsoDate(addDays(now, 60)), // Active
+      amount: 5200,
+      paid: 5200,
+      paymentMethod: 'Bank Transfer'
+    },
+    {
+      _id: 'cust_07',
+      gymId,
+      customerId: 'FIT-1007',
+      name: 'Sneha Reddy',
+      gender: 'Female',
+      dateOfBirth: '2000-01-30',
+      contacts: {
+        primary: '9654321098',
+        secondary: '9654321099',
+        emergency: '9654321090'
+      },
+      address: 'C-101, Sunshine Park, Bandra East, Mumbai',
+      notes: 'Registered today! New fitness journey begun.',
+      planName: 'Monthly Standard',
+      startDate: formatIsoDate(now),
+      endDate: formatIsoDate(addDays(now, 30)), // Active
+      amount: 2000,
+      paid: 2000,
+      paymentMethod: 'UPI'
+    },
+    {
+      _id: 'cust_08',
+      gymId,
+      customerId: 'FIT-1008',
+      name: 'Kabir Mehta',
+      gender: 'Male',
+      dateOfBirth: '1997-07-11',
+      contacts: {
+        primary: '9819098190',
+        secondary: '',
+        emergency: '9819098199'
+      },
+      address: '502, Oceanic View, Worli, Mumbai',
+      notes: 'Advance booking starting next week.',
+      planName: 'Quarterly Transformation',
+      startDate: formatIsoDate(addDays(now, 5)), // Upcoming
+      endDate: formatIsoDate(addDays(now, 95)),
+      amount: 5200,
+      paid: 5200,
+      paymentMethod: 'UPI'
+    }
+  ];
+
+  let payIndex = 1001;
+
+  for (const c of seedCustomers) {
+    const { planName, startDate, endDate, amount, paid, paymentMethod, ...custFields } = c;
+
+    // Customer
+    db.customers.insertOne({
+      ...custFields,
+      createdAt: formatIsoDate(addDays(now, -40)),
+      updatedAt: formatIsoDate(now)
+    });
+
+    // Active/current membership
+    const membStatus = calculateMembershipStatus(startDate, endDate);
+    const membDoc = db.memberships.insertOne({
+      gymId,
+      customerId: custFields.customerId,
+      planName,
+      startDate,
+      endDate,
+      amount,
+      status: membStatus,
+      createdBy: 'user_owner_01',
+      createdAt: startDate
+    });
+
+    // Historical membership for Rahul Sharma to demonstrate renewal history
+    if (custFields.customerId === 'FIT-1001') {
+      db.memberships.insertOne({
+        gymId,
+        customerId: custFields.customerId,
+        planName: 'Monthly Standard',
+        startDate: formatIsoDate(addDays(now, -58)),
+        endDate: formatIsoDate(addDays(now, -28)),
+        amount: 2000,
+        status: 'expired',
+        createdBy: 'user_owner_01',
+        createdAt: formatIsoDate(addDays(now, -58))
+      });
+      // Past payment
+      db.payments.insertOne({
+        gymId,
+        customerId: custFields.customerId,
+        membershipId: 'past_memb_01',
+        totalAmount: 2000,
+        amountPaid: 2000,
+        pendingAmount: 0,
+        paymentMethod: 'UPI',
+        paymentDate: formatIsoDate(addDays(now, -58)),
+        transactionReference: `PAY-${payIndex++}`,
+        notes: 'Initial registration fee and 1st month',
+        createdAt: formatIsoDate(addDays(now, -58))
+      });
+    }
+
+    // Current Payment
+    const pendingAmount = Math.max(0, amount - paid);
+    db.payments.insertOne({
+      gymId,
+      customerId: custFields.customerId,
+      membershipId: membDoc._id,
+      totalAmount: amount,
+      amountPaid: paid,
+      pendingAmount,
+      paymentMethod,
+      paymentDate: startDate,
+      transactionReference: `PAY-${payIndex++}`,
+      notes: pendingAmount > 0 ? `Partial payment collected. ₹${pendingAmount} remaining balance.` : 'Full payment cleared',
+      createdAt: startDate
+    });
+  }
+
+  // Seed sample reminder log
+  db.reminderLogs.insertOne({
+    gymId,
+    customerId: 'FIT-1001',
+    membershipId: 'memb_rahul',
+    contactNumber: '9820111001',
+    reminderType: 'expiring_soon',
+    message: 'Hello Rahul! 👋 Your gym membership at FitZone Pro is expiring in 2 days.',
+    sentAt: new Date(Date.now() - 3600000 * 24).toISOString(),
+    status: 'initiated',
+    createdBy: 'Vikram Singhania'
+  });
+
+  console.log('FitManage seeding complete!');
+}

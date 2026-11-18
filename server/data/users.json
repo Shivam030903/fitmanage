@@ -1,0 +1,24 @@
+[
+  {
+    "_id": "user_owner_01",
+    "name": "Vikram Singhania",
+    "email": "owner@fitmanage.io",
+    "password": "$2a$10$gEfwVfvKdtgk2aLzNkPg7eQqxwO1iyNgmU6MhH12Nm3zHfpEgRbRG",
+    "role": "owner",
+    "phone": "+91 98200 99999",
+    "gymId": "gym_fitzone_01",
+    "createdAt": "2026-11-18T07:55:45.674Z",
+    "updatedAt": "2026-11-18T07:55:45.674Z"
+  },
+  {
+    "_id": "user_reception_01",
+    "name": "Pooja Sharma",
+    "email": "receptionist@fitmanage.io",
+    "password": "$2a$10$gEfwVfvKdtgk2aLzNkPg7eQqxwO1iyNgmU6MhH12Nm3zHfpEgRbRG",
+    "role": "receptionist",
+    "phone": "+91 98200 88888",
+    "gymId": "gym_fitzone_01",
+    "createdAt": "2026-11-18T07:55:45.677Z",
+    "updatedAt": "2026-11-18T07:55:45.677Z"
+  }
+]

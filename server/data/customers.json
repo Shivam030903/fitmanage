@@ -1,0 +1,56 @@
+[
+  {
+    "gymId": "gym_fitzone_01",
+    "customerId": "FIT-1001",
+    "name": "Shivam",
+    "gender": "Male",
+    "dateOfBirth": "",
+    "profilePhoto": "",
+    "contacts": {
+      "primary": "9212151697",
+      "secondary": "",
+      "emergency": ""
+    },
+    "address": "",
+    "notes": "",
+    "createdAt": "2026-11-18T09:28:50.226Z",
+    "_id": "id_1794994130226_3o6goc",
+    "updatedAt": "2026-11-18T09:28:50.226Z"
+  },
+  {
+    "gymId": "gym_fitzone_01",
+    "customerId": "FIT-1002",
+    "name": "Harshit",
+    "gender": "Male",
+    "dateOfBirth": "",
+    "profilePhoto": "",
+    "contacts": {
+      "primary": "4961865485",
+      "secondary": "",
+      "emergency": ""
+    },
+    "address": "",
+    "notes": "",
+    "createdAt": "2026-11-18T09:32:07.286Z",
+    "_id": "id_1794994327286_c03bua",
+    "updatedAt": "2026-11-18T09:32:07.286Z"
+  },
+  {
+    "gymId": "gym_fitzone_01",
+    "customerId": "FIT-1003",
+    "name": "Ayush",
+    "gender": "Male",
+    "dateOfBirth": "",
+    "profilePhoto": "",
+    "contacts": {
+      "primary": "7827902979",
+      "secondary": "",
+      "emergency": ""
+    },
+    "address": "",
+    "notes": "",
+    "createdAt": "2026-11-18T09:39:37.085Z",
+    "_id": "id_1794994777085_yg6g8j",
+    "updatedAt": "2026-11-18T09:39:37.085Z"
+  }
+]
