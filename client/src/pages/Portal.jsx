@@ -263,7 +263,7 @@ export default function Portal() {
   // -------------------------------------------------------------
   // MEMBER DASHBOARD SCREEN
   // -------------------------------------------------------------
-  const { member, gym, currentMembership, payments = [], announcements = [], peakHours = [] } = data;
+  const { member, gym, currentMembership, payments = [], announcements = [], peakHours = [], occupancy = null } = data;
   const isExpired = currentMembership?.status === 'expired';
   const isActive = currentMembership?.status === 'active' || currentMembership?.status === 'expiring_soon';
   const qrCodeUrl = `https://api.qrserver.com/v1/create-qr-code/?size=180x180&data=${encodeURIComponent(member.customerId)}`;
@@ -549,6 +549,59 @@ export default function Portal() {
         {/* TAB 3: TIMINGS, ANNOUNCEMENTS & PEAK HOURS */}
         {activeTab === 'gym' && (
           <div className="space-y-5 animate-in fade-in">
+            {/* Live Studio Occupancy Meter */}
+            {occupancy && (
+              <div className="p-4 rounded-2xl bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 border border-slate-800 space-y-3 shadow-lg">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center space-x-2">
+                    <span className="relative flex h-3 w-3">
+                      <span className={`animate-ping absolute inline-flex h-full w-full rounded-full opacity-75 ${
+                        occupancy.color === 'rose' ? 'bg-rose-400' : occupancy.color === 'amber' ? 'bg-amber-400' : 'bg-emerald-400'
+                      }`} />
+                      <span className={`relative inline-flex rounded-full h-3 w-3 ${
+                        occupancy.color === 'rose' ? 'bg-rose-500' : occupancy.color === 'amber' ? 'bg-amber-500' : 'bg-emerald-500'
+                      }`} />
+                    </span>
+                    <span className="font-extrabold text-white text-xs tracking-wider uppercase">Live Studio Occupancy</span>
+                  </div>
+                  <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold border ${
+                    occupancy.color === 'rose' 
+                      ? 'bg-rose-500/10 text-rose-400 border-rose-500/30' 
+                      : occupancy.color === 'amber'
+                      ? 'bg-amber-500/10 text-amber-400 border-amber-500/30'
+                      : 'bg-emerald-500/10 text-emerald-400 border-emerald-500/30'
+                  }`}>
+                    {occupancy.status}
+                  </span>
+                </div>
+
+                <div className="space-y-1.5">
+                  <div className="flex justify-between items-baseline">
+                    <span className="text-2xl font-black text-white font-mono">
+                      {occupancy.currentMembers} <span className="text-xs font-normal text-slate-400">/ {occupancy.maxCapacity} Capacity</span>
+                    </span>
+                    <span className="text-xs font-bold font-mono text-slate-300">
+                      {occupancy.percentage}% Filled
+                    </span>
+                  </div>
+                  <div className="w-full bg-slate-950 h-2.5 rounded-full overflow-hidden p-0.5 border border-slate-800">
+                    <div 
+                      className={`h-full rounded-full transition-all duration-500 ${
+                        occupancy.color === 'rose' ? 'bg-rose-500' : occupancy.color === 'amber' ? 'bg-amber-500' : 'bg-emerald-500'
+                      }`}
+                      style={{ width: `${occupancy.percentage}%` }}
+                    />
+                  </div>
+                </div>
+
+                <p className="text-[11px] text-slate-400">
+                  {occupancy.color === 'emerald' && '✨ Great time to hit the gym! Equipment is open and crowd is light.'}
+                  {occupancy.color === 'amber' && '⚡ Moderate crowd. Plenty of space to train comfortably.'}
+                  {occupancy.color === 'rose' && '🔥 Peak rush hour. Popular equipment may have short wait times.'}
+                </p>
+              </div>
+            )}
+
             {/* Gym Announcements */}
             <div className="space-y-3">
               <h3 className="font-bold text-white text-sm flex items-center space-x-2">

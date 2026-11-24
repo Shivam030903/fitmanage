@@ -103,6 +103,10 @@ export const api = {
   deletePlan: (id) => request(`/settings/plans/${id}`, { method: 'DELETE' }),
   scanMultiStageExpiry: () => request('/reminders/scan-multi-stage', { method: 'POST' }),
   getMultiStageConfig: () => request('/reminders/multi-stage-config'),
+  getBroadcastPreview: (target) => request(`/settings/broadcast-preview?target=${encodeURIComponent(target)}`),
+  broadcastWhatsApp: (data) => request('/settings/broadcast', { method: 'POST', body: JSON.stringify(data) }),
+  getOccupancy: () => request('/settings/occupancy'),
+  updateOccupancy: (data) => request('/settings/occupancy', { method: 'PUT', body: JSON.stringify(data) }),
 
   // Member Self-Service Portal
   portalSendOtp: (phone) => request('/portal/send-otp', { method: 'POST', body: JSON.stringify({ phone }) }),

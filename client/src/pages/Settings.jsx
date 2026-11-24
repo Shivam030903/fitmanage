@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Dumbbell, MessageSquare, Plus, Trash2, CheckCircle2, Zap, QrCode, Smartphone, RefreshCw, Clock } from 'lucide-react';
+import { Settings as SettingsIcon, Dumbbell, MessageSquare, Plus, Trash2, CheckCircle2, Zap, QrCode, Smartphone, RefreshCw, Clock, Radio, Megaphone, Users, Activity, BarChart2, Calendar, AlertCircle, Send, Edit2 } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -55,6 +55,38 @@ export default function Settings() {
   const [newPlanPrice, setNewPlanPrice] = useState(2000);
   const [newPlanDesc, setNewPlanDesc] = useState('');
 
+  // 1. WhatsApp Broadcast to Members State
+  const [broadcastTarget, setBroadcastTarget] = useState('all');
+  const [broadcastMessage, setBroadcastMessage] = useState(
+    '🏋️‍♂️ *Important Gym Announcement from {gymName}*\n\nHello *{name}*! We are excited to announce our upcoming special fitness workshop this weekend. Walk-in and join the team!\n\nBest regards,\n_{gymName} Team_'
+  );
+  const [broadcastRecipientsCount, setBroadcastRecipientsCount] = useState(0);
+  const [broadcasting, setBroadcasting] = useState(false);
+  const [broadcastResult, setBroadcastResult] = useState(null);
+
+  // 2. Member Portal Announcements State
+  const [announcements, setAnnouncements] = useState([]);
+  const [newAnnTitle, setNewAnnTitle] = useState('');
+  const [newAnnTag, setNewAnnTag] = useState('Notice');
+  const [newAnnDate, setNewAnnDate] = useState('Today');
+  const [newAnnContent, setNewAnnContent] = useState('');
+  const [showAddAnn, setShowAddAnn] = useState(false);
+
+  // 3. Studio Occupancy & Peak-Hours State
+  const [maxCapacity, setMaxCapacity] = useState(50);
+  const [currentMembers, setCurrentMembers] = useState(18);
+  const [occupancySlots, setOccupancySlots] = useState([
+    { id: 'slot_1', time: '6:00 AM - 8:00 AM', expectedMembers: 30 },
+    { id: 'slot_2', time: '8:00 AM - 10:00 AM', expectedMembers: 45 },
+    { id: 'slot_3', time: '11:00 AM - 4:00 PM', expectedMembers: 15 },
+    { id: 'slot_4', time: '5:00 PM - 7:00 PM', expectedMembers: 48 },
+    { id: 'slot_5', time: '7:00 PM - 10:00 PM', expectedMembers: 32 }
+  ]);
+  const [savingOccupancy, setSavingOccupancy] = useState(false);
+  const [newSlotTime, setNewSlotTime] = useState('');
+  const [newSlotMembers, setNewSlotMembers] = useState(25);
+  const [showAddSlot, setShowAddSlot] = useState(false);
+
   const fetchSettings = async () => {
     try {
       setLoading(true);
@@ -89,6 +121,44 @@ export default function Settings() {
 
         if (res.gym.phone) {
           setTestPhone(res.gym.phone.replace(/\D/g, '').slice(-10));
+        }
+
+        // Announcements
+        const existingAnns = res.gym.settings?.announcements;
+        if (existingAnns && Array.isArray(existingAnns) && existingAnns.length > 0) {
+          setAnnouncements(existingAnns);
+        } else {
+          setAnnouncements([
+            {
+              id: 'ann_1',
+              title: '🏋️ Summer Strength & Conditioning Boot Camp',
+              date: 'Starts Next Monday',
+              content: 'Join our certified trainers for high-intensity morning sessions at 6:30 AM. Open to all active members!',
+              tag: 'Camp'
+            },
+            {
+              id: 'ann_2',
+              title: '💪 New Equipment Zone Added',
+              date: 'Updated This Week',
+              content: 'Brand new Olympic bumper plates, calibrated barbells, and an isolated cable station are now live in the main weight room.',
+              tag: 'Facility'
+            },
+            {
+              id: 'ann_3',
+              title: '🕒 Regular Studio Timings',
+              date: 'Daily',
+              content: 'Monday to Saturday: 6:00 AM – 10:00 PM | Sunday: 7:00 AM – 2:00 PM. Lockers and showers cleaned daily.',
+              tag: 'Hours'
+            }
+          ]);
+        }
+
+        // Occupancy
+        const occ = res.gym.settings?.occupancy || {};
+        setMaxCapacity(Number(occ.maxCapacity) || 50);
+        setCurrentMembers(Number(occ.currentMembers !== undefined ? occ.currentMembers : 18));
+        if (occ.slots && Array.isArray(occ.slots) && occ.slots.length > 0) {
+          setOccupancySlots(occ.slots);
         }
       }
       setPlans(res.plans || []);
@@ -183,6 +253,12 @@ export default function Settings() {
                 template: stage3dTemplate
               }
             }
+          },
+          announcements,
+          occupancy: {
+            maxCapacity: Number(maxCapacity) || 50,
+            currentMembers: Number(currentMembers) || 0,
+            slots: occupancySlots
           }
         }
       });
@@ -231,6 +307,128 @@ export default function Settings() {
     } finally {
       setTriggeringScan(false);
     }
+  };
+
+  // Fetch broadcast recipient count when target changes
+  const fetchBroadcastPreview = async (target) => {
+    try {
+      const res = await api.getBroadcastPreview(target);
+      setBroadcastRecipientsCount(res.count || 0);
+    } catch (e) {
+      console.warn('Broadcast preview error:', e);
+    }
+  };
+
+  useEffect(() => {
+    fetchBroadcastPreview(broadcastTarget);
+  }, [broadcastTarget]);
+
+  // Dispatch broadcast to members
+  const handleSendBroadcast = async () => {
+    if (!qrData.isConnected) {
+      alert('Please connect your gym WhatsApp number first by scanning the QR code above.');
+      return;
+    }
+    if (!broadcastMessage.trim()) {
+      alert('Please enter a message to broadcast.');
+      return;
+    }
+    if (!confirm(`Are you sure you want to broadcast this message to ${broadcastRecipientsCount} members via WhatsApp?`)) {
+      return;
+    }
+
+    setBroadcasting(true);
+    setBroadcastResult(null);
+    try {
+      const res = await api.broadcastWhatsApp({
+        target: broadcastTarget,
+        message: broadcastMessage
+      });
+      setBroadcastResult(res);
+      alert(res.message);
+    } catch (err) {
+      alert(err.message || 'Broadcast failed.');
+    } finally {
+      setBroadcasting(false);
+    }
+  };
+
+  // Announcements Handlers
+  const handleAddAnnouncement = (e) => {
+    e.preventDefault();
+    if (!newAnnTitle.trim() || !newAnnContent.trim()) {
+      alert('Please provide announcement title and content.');
+      return;
+    }
+    const newEntry = {
+      id: 'ann_' + Date.now(),
+      title: newAnnTitle.trim(),
+      tag: newAnnTag.trim() || 'Notice',
+      date: newAnnDate.trim() || 'Today',
+      content: newAnnContent.trim()
+    };
+    setAnnouncements([newEntry, ...announcements]);
+    setNewAnnTitle('');
+    setNewAnnContent('');
+    setShowAddAnn(false);
+  };
+
+  const handleDeleteAnnouncement = (id) => {
+    if (confirm('Delete this announcement? It will be removed from the Member Portal.')) {
+      setAnnouncements(announcements.filter(a => a.id !== id));
+    }
+  };
+
+  // Occupancy Steppers & Slot Handlers
+  const handleQuickOccupancyStep = async (delta) => {
+    const updated = Math.max(0, currentMembers + delta);
+    setCurrentMembers(updated);
+    try {
+      await api.updateOccupancy({
+        maxCapacity,
+        currentMembers: updated,
+        slots: occupancySlots
+      });
+    } catch (e) {
+      console.warn('Quick occupancy step error:', e);
+    }
+  };
+
+  const handleSaveOccupancyConfig = async () => {
+    setSavingOccupancy(true);
+    try {
+      await api.updateOccupancy({
+        maxCapacity: Number(maxCapacity) || 50,
+        currentMembers: Number(currentMembers) || 0,
+        slots: occupancySlots
+      });
+      alert('Studio occupancy configuration saved! It is now live on the Member Portal (/portal).');
+    } catch (err) {
+      alert(err.message || 'Failed to save occupancy: ' + err.message);
+    } finally {
+      setSavingOccupancy(false);
+    }
+  };
+
+  const handleAddOccupancySlot = (e) => {
+    e.preventDefault();
+    if (!newSlotTime.trim()) {
+      alert('Please enter a time slot (e.g. 6:00 AM - 8:00 AM)');
+      return;
+    }
+    const newSlot = {
+      id: 'slot_' + Date.now(),
+      time: newSlotTime.trim(),
+      expectedMembers: Number(newSlotMembers) || 20
+    };
+    setOccupancySlots([...occupancySlots, newSlot]);
+    setNewSlotTime('');
+    setNewSlotMembers(25);
+    setShowAddSlot(false);
+  };
+
+  const handleDeleteOccupancySlot = (id) => {
+    setOccupancySlots(occupancySlots.filter(s => s.id !== id));
   };
 
   const handleCreatePlan = async (e) => {
@@ -808,6 +1006,332 @@ export default function Settings() {
             </button>
           </div>
         </div>
+
+        {/* 6. WhatsApp Member Broadcast Engine */}
+        <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm space-y-5">
+          <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-2">
+                <Radio className="w-4 h-4 text-emerald-600" />
+                <span>Direct WhatsApp Broadcast to Members</span>
+              </h2>
+              <p className="text-xs text-slate-400">
+                Instantly dispatch a customized announcement, holiday notice, or offer directly to your members' WhatsApp.
+              </p>
+            </div>
+            <span className="self-start sm:self-auto text-xs font-bold px-3 py-1 rounded-full bg-emerald-50 text-emerald-800 border border-emerald-200 flex items-center space-x-1.5">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>{broadcastRecipientsCount} Members Targeted</span>
+            </span>
+          </div>
+
+          <div className="space-y-4 text-xs">
+            {/* Target Audience Selector */}
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1.5">Select Target Audience</label>
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                {[
+                  { id: 'all', label: 'All Registered Members', desc: 'Active, expiring, and expired list' },
+                  { id: 'active', label: 'Active Members Only', desc: 'Currently valid & expiring soon' },
+                  { id: 'expired', label: 'Expired Members Only', desc: 'Comeback / win-back list' }
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    onClick={() => setBroadcastTarget(opt.id)}
+                    className={`p-3 rounded-xl border text-left transition-all ${
+                      broadcastTarget === opt.id
+                        ? 'border-emerald-500 bg-emerald-50/50 text-emerald-950 font-bold shadow-sm ring-1 ring-emerald-400/50'
+                        : 'border-slate-200 hover:border-slate-300 bg-slate-50/50 text-slate-700'
+                    }`}
+                  >
+                    <div className="font-bold text-xs">{opt.label}</div>
+                    <div className="text-[11px] text-slate-500 mt-0.5">{opt.desc}</div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Message Area */}
+            <div>
+              <div className="flex items-center justify-between mb-1.5">
+                <label className="font-semibold text-slate-700">Broadcast Message Content</label>
+                <div className="flex flex-wrap items-center gap-1 text-[10px]">
+                  <span className="text-slate-400">Insert tag:</span>
+                  {['{name}', '{gymName}', '{daysRemaining}', '{planName}'].map((ph) => (
+                    <button
+                      key={ph}
+                      type="button"
+                      onClick={() => setBroadcastMessage(prev => prev + ' ' + ph)}
+                      className="px-1.5 py-0.5 rounded bg-slate-100 hover:bg-slate-200 text-slate-700 font-mono"
+                    >
+                      {ph}
+                    </button>
+                  ))}
+                </div>
+              </div>
+              <textarea
+                rows={5}
+                value={broadcastMessage}
+                onChange={(e) => setBroadcastMessage(e.target.value)}
+                placeholder="Type your WhatsApp broadcast message..."
+                className="w-full p-3 rounded-xl border border-slate-200 font-mono text-xs leading-relaxed"
+              />
+            </div>
+
+            {/* Broadcast Results Alert */}
+            {broadcastResult && (
+              <div className={`p-4 rounded-xl border text-xs space-y-1 ${
+                broadcastResult.failed === 0 
+                  ? 'bg-emerald-50 border-emerald-200 text-emerald-900' 
+                  : 'bg-amber-50 border-amber-200 text-amber-900'
+              }`}>
+                <div className="font-bold flex items-center space-x-1.5">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-600" />
+                  <span>{broadcastResult.message}</span>
+                </div>
+                <div className="text-[11px] text-slate-600">
+                  Total Recipients: {broadcastResult.total} • Successfully Dispatched: {broadcastResult.dispatched} • Failed: {broadcastResult.failed}
+                </div>
+              </div>
+            )}
+
+            <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <p className="text-[11px] text-slate-400">
+                Dispatches sequentially via linked WhatsApp with polite pauses to ensure 100% delivery.
+              </p>
+              <button
+                type="button"
+                onClick={handleSendBroadcast}
+                disabled={broadcasting || broadcastRecipientsCount === 0 || !qrData.isConnected}
+                className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center space-x-1.5 shadow-sm"
+              >
+                <Send className="w-3.5 h-3.5" />
+                <span>{broadcasting ? 'Dispatching to Members...' : `Dispatch Broadcast (${broadcastRecipientsCount})`}</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* 7. Member Portal Announcements Manager */}
+        <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm space-y-5">
+          <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-2">
+                <Megaphone className="w-4 h-4 text-emerald-600" />
+                <span>Member Portal Announcements & Notices</span>
+              </h2>
+              <p className="text-xs text-slate-400">
+                Post notices, bootcamp events, holiday schedules, and news visible live on the Member Portal (<code>/portal</code>).
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={() => setShowAddAnn(true)}
+              className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center space-x-1 shadow-sm self-start sm:self-auto"
+            >
+              <Plus className="w-3.5 h-3.5" />
+              <span>Add Notice</span>
+            </button>
+          </div>
+
+          <div className="space-y-3">
+            {announcements.length === 0 ? (
+              <p className="text-xs text-slate-400 py-3 text-center">No active announcements. Click "+ Add Notice" to create one.</p>
+            ) : (
+              announcements.map((ann) => (
+                <div key={ann.id} className="p-4 rounded-xl border border-slate-200/90 bg-slate-50/60 flex items-start justify-between gap-4">
+                  <div className="space-y-1 text-xs">
+                    <div className="flex items-center space-x-2">
+                      <span className="font-bold text-slate-900">{ann.title}</span>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-100 text-emerald-800 font-bold">
+                        {ann.tag || 'Notice'}
+                      </span>
+                      <span className="text-[10px] text-slate-400 font-medium">
+                        {ann.date}
+                      </span>
+                    </div>
+                    <p className="text-slate-600 leading-relaxed text-[11px]">{ann.content}</p>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => handleDeleteAnnouncement(ann.id)}
+                    className="text-slate-400 hover:text-rose-600 p-1"
+                    title="Delete notice"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+
+        {/* 8. Studio Occupancy & Peak-Hours Customization */}
+        <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm space-y-5">
+          <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-2">
+                <Users className="w-4 h-4 text-emerald-600" />
+                <span>Studio Occupancy & Peak-Hour Time Slots</span>
+              </h2>
+              <p className="text-xs text-slate-400">
+                Set total gym capacity, track live on-floor members, and customize peak hours shown on <code>/portal</code>.
+              </p>
+            </div>
+            <button
+              type="button"
+              onClick={handleSaveOccupancyConfig}
+              disabled={savingOccupancy}
+              className="px-4 py-1.5 rounded-xl bg-slate-900 hover:bg-slate-800 text-white font-bold text-xs flex items-center space-x-1.5 shadow-sm self-start sm:self-auto"
+            >
+              <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+              <span>{savingOccupancy ? 'Saving...' : 'Save Occupancy'}</span>
+            </button>
+          </div>
+
+          {/* Live Floor Occupancy Stepper */}
+          <div className="p-4 rounded-xl border border-slate-200 bg-slate-50/70 space-y-3">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div>
+                <span className="font-bold text-slate-900 text-xs block">Live Gym Floor Occupancy</span>
+                <span className="text-[11px] text-slate-500">
+                  Quickly tap + / - at the front desk when members enter or leave.
+                </span>
+              </div>
+
+              {/* Status Badge */}
+              <div className="flex items-center space-x-2">
+                <span className="text-xs font-mono font-bold text-slate-700">
+                  {currentMembers} / {maxCapacity} Members
+                </span>
+                <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-bold ${
+                  Math.round((currentMembers / (maxCapacity || 50)) * 100) >= 75
+                    ? 'bg-rose-100 text-rose-800'
+                    : Math.round((currentMembers / (maxCapacity || 50)) * 100) >= 40
+                    ? 'bg-amber-100 text-amber-800'
+                    : 'bg-emerald-100 text-emerald-800'
+                }`}>
+                  {Math.round((currentMembers / (maxCapacity || 50)) * 100)}% Filled • {
+                    Math.round((currentMembers / (maxCapacity || 50)) * 100) >= 75
+                      ? 'Peak Hours'
+                      : Math.round((currentMembers / (maxCapacity || 50)) * 100) >= 40
+                      ? 'Moderate'
+                      : 'Quiet & Open'
+                  }
+                </span>
+              </div>
+            </div>
+
+            {/* Stepper Buttons & Max Capacity Input */}
+            <div className="flex flex-wrap items-center justify-between gap-3 pt-1">
+              <div className="flex items-center space-x-1.5">
+                <span className="text-xs font-semibold text-slate-600 mr-1">Floor Count:</span>
+                <button
+                  type="button"
+                  onClick={() => handleQuickOccupancyStep(-5)}
+                  className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 font-mono font-bold text-xs"
+                >
+                  -5
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickOccupancyStep(-1)}
+                  className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 font-mono font-bold text-xs"
+                >
+                  -1
+                </button>
+                <input
+                  type="number"
+                  min="0"
+                  value={currentMembers}
+                  onChange={(e) => setCurrentMembers(Math.max(0, Number(e.target.value)))}
+                  className="w-16 p-1 text-center rounded-lg border border-slate-300 font-mono font-bold text-xs"
+                />
+                <button
+                  type="button"
+                  onClick={() => handleQuickOccupancyStep(1)}
+                  className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 font-mono font-bold text-xs"
+                >
+                  +1
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleQuickOccupancyStep(5)}
+                  className="px-2.5 py-1 rounded-lg bg-white border border-slate-200 hover:bg-slate-100 font-mono font-bold text-xs"
+                >
+                  +5
+                </button>
+              </div>
+
+              <div className="flex items-center space-x-2 text-xs">
+                <span className="font-semibold text-slate-600">Total Gym Max Capacity:</span>
+                <input
+                  type="number"
+                  min="5"
+                  value={maxCapacity}
+                  onChange={(e) => setMaxCapacity(Math.max(1, Number(e.target.value)))}
+                  className="w-20 p-1 text-center rounded-lg border border-slate-300 font-mono font-bold text-xs"
+                />
+              </div>
+            </div>
+          </div>
+
+          {/* Peak Hours Slot Table */}
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <span className="font-bold text-slate-900 text-xs block">Configured Time Windows & Expected Members</span>
+                <span className="text-[11px] text-slate-500">
+                  Status automatically calculates based on total gym capacity ({maxCapacity} members).
+                </span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setShowAddSlot(true)}
+                className="px-3 py-1 rounded-lg bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center space-x-1 border border-emerald-200"
+              >
+                <Plus className="w-3.5 h-3.5" />
+                <span>Add Time Slot</span>
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 gap-2">
+              {occupancySlots.map((slot) => {
+                const fill = Math.min(100, Math.round(((Number(slot.expectedMembers) || 0) / (maxCapacity || 50)) * 100));
+                const status = fill >= 75 ? 'Peak Hours' : fill >= 40 ? 'Moderate' : 'Quiet & Open';
+                const color = fill >= 75 ? 'rose' : fill >= 40 ? 'amber' : 'emerald';
+                return (
+                  <div key={slot.id} className="p-3 rounded-xl border border-slate-200 bg-white flex items-center justify-between text-xs">
+                    <div className="space-y-1">
+                      <div className="flex items-center space-x-2">
+                        <Clock className="w-3.5 h-3.5 text-slate-400" />
+                        <span className="font-bold text-slate-900">{slot.time}</span>
+                        <span className={`px-2 py-0.5 rounded text-[10px] font-bold ${
+                          color === 'rose' ? 'bg-rose-100 text-rose-800' : color === 'amber' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                        }`}>
+                          {status} ({fill}%)
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-slate-500 pl-5">
+                        Expected: <strong className="font-mono text-slate-700">{slot.expectedMembers}</strong> members
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={() => handleDeleteOccupancySlot(slot.id)}
+                      className="text-slate-400 hover:text-rose-600 p-1"
+                      title="Delete slot"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
       </form>
 
       {/* Add Plan Modal */}
@@ -883,6 +1407,154 @@ export default function Settings() {
                   className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold"
                 >
                   Save Plan
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Announcement Modal */}
+      {showAddAnn && (
+        <div 
+          className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setShowAddAnn(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl max-w-md w-full p-6 shadow-2xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-bold text-slate-900 text-base flex items-center space-x-2">
+              <Megaphone className="w-4 h-4 text-emerald-600" />
+              <span>Add Member Portal Announcement</span>
+            </h3>
+            <form onSubmit={handleAddAnnouncement} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Headline / Title</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. 🏋️ Summer Transformation Camp"
+                  value={newAnnTitle}
+                  onChange={(e) => setNewAnnTitle(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Tag / Category</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. Event, Facility, Holiday"
+                    value={newAnnTag}
+                    onChange={(e) => setNewAnnTag(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-200"
+                  />
+                </div>
+                <div>
+                  <label className="block font-semibold text-slate-700 mb-1">Date / Badge</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="e.g. This Weekend, Dec 1"
+                    value={newAnnDate}
+                    onChange={(e) => setNewAnnDate(e.target.value)}
+                    className="w-full p-2.5 rounded-xl border border-slate-200"
+                  />
+                </div>
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Notice Content</label>
+                <textarea
+                  rows={4}
+                  required
+                  placeholder="Describe the announcement or notice..."
+                  value={newAnnContent}
+                  onChange={(e) => setNewAnnContent(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200"
+                />
+              </div>
+
+              <div className="pt-2 flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddAnn(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold"
+                >
+                  Post Notice
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Add Occupancy Slot Modal */}
+      {showAddSlot && (
+        <div 
+          className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setShowAddSlot(false)}
+        >
+          <div 
+            className="bg-white rounded-2xl max-w-sm w-full p-6 shadow-2xl space-y-4"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <h3 className="font-bold text-slate-900 text-base flex items-center space-x-2">
+              <Clock className="w-4 h-4 text-emerald-600" />
+              <span>Add Operating Time Slot</span>
+            </h3>
+            <form onSubmit={handleAddOccupancySlot} className="space-y-3 text-xs">
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Time Window</label>
+                <input
+                  type="text"
+                  required
+                  placeholder="e.g. 6:00 AM - 8:00 AM"
+                  value={newSlotTime}
+                  onChange={(e) => setNewSlotTime(e.target.value)}
+                  className="w-full p-2.5 rounded-xl border border-slate-200"
+                />
+              </div>
+
+              <div>
+                <label className="block font-semibold text-slate-700 mb-1">Expected / Peak Members</label>
+                <input
+                  type="number"
+                  required
+                  min="1"
+                  value={newSlotMembers}
+                  onChange={(e) => setNewSlotMembers(Math.max(1, Number(e.target.value)))}
+                  className="w-full p-2.5 rounded-xl border border-slate-200 font-mono font-bold"
+                />
+                <p className="text-[10px] text-slate-400 mt-1">
+                  Based on your max gym capacity ({maxCapacity}), this slot will calculate as {
+                    Math.round((newSlotMembers / (maxCapacity || 50)) * 100)
+                  }% filled.
+                </p>
+              </div>
+
+              <div className="pt-2 flex justify-end space-x-2">
+                <button
+                  type="button"
+                  onClick={() => setShowAddSlot(false)}
+                  className="px-4 py-2 rounded-xl bg-slate-100 text-slate-700 font-semibold"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  className="px-5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold"
+                >
+                  Add Slot
                 </button>
               </div>
             </form>

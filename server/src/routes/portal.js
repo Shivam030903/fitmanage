@@ -187,8 +187,8 @@ router.get('/me', memberAuthMiddleware, (req, res) => {
     const payments = db.payments.find({ gymId, customerId })
       .sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
-    // Gym announcements & community updates
-    const announcements = [
+    // Dynamic Gym announcements & community updates from settings
+    const defaultAnnouncements = [
       {
         id: 'ann_1',
         title: '🏋️ Summer Strength & Conditioning Boot Camp',
@@ -212,14 +212,64 @@ router.get('/me', memberAuthMiddleware, (req, res) => {
       }
     ];
 
-    // Peak hour occupancy guide
-    const peakHours = [
-      { time: '6:00 AM - 8:00 AM', status: 'Moderate', fill: 60, color: 'emerald' },
-      { time: '8:00 AM - 10:00 AM', status: 'Peak Hours', fill: 90, color: 'rose' },
-      { time: '11:00 AM - 4:00 PM', status: 'Quiet & Open', fill: 30, color: 'blue' },
-      { time: '5:00 PM - 7:00 PM', status: 'Peak Hours', fill: 95, color: 'rose' },
-      { time: '7:00 PM - 10:00 PM', status: 'Moderate', fill: 65, color: 'emerald' }
+    const announcements = (gym.settings?.announcements && gym.settings.announcements.length > 0)
+      ? gym.settings.announcements
+      : defaultAnnouncements;
+
+    // Customizable studio occupancy & peak hour guide
+    const defaultSlots = [
+      { id: 'slot_1', time: '6:00 AM - 8:00 AM', expectedMembers: 30 },
+      { id: 'slot_2', time: '8:00 AM - 10:00 AM', expectedMembers: 45 },
+      { id: 'slot_3', time: '11:00 AM - 4:00 PM', expectedMembers: 15 },
+      { id: 'slot_4', time: '5:00 PM - 7:00 PM', expectedMembers: 48 },
+      { id: 'slot_5', time: '7:00 PM - 10:00 PM', expectedMembers: 32 }
     ];
+
+    const occupancyConf = gym.settings?.occupancy || {};
+    const maxCapacity = Number(occupancyConf.maxCapacity) || 50;
+    const currentMembers = Number(occupancyConf.currentMembers !== undefined ? occupancyConf.currentMembers : 18);
+    const slotsData = (occupancyConf.slots && occupancyConf.slots.length > 0) ? occupancyConf.slots : defaultSlots;
+
+    const occupancyPercent = Math.min(100, Math.round((currentMembers / maxCapacity) * 100));
+    let occupancyStatus = 'Quiet & Open';
+    let occupancyColor = 'emerald';
+    if (occupancyPercent >= 75) {
+      occupancyStatus = 'Peak Hours';
+      occupancyColor = 'rose';
+    } else if (occupancyPercent >= 40) {
+      occupancyStatus = 'Moderate';
+      occupancyColor = 'amber';
+    }
+
+    const peakHours = slotsData.map(slot => {
+      const exp = Number(slot.expectedMembers) || 0;
+      const fill = Math.min(100, Math.round((exp / maxCapacity) * 100));
+      let slotStatus = 'Quiet & Open';
+      let slotColor = 'emerald';
+      if (fill >= 75) {
+        slotStatus = 'Peak Hours';
+        slotColor = 'rose';
+      } else if (fill >= 40) {
+        slotStatus = 'Moderate';
+        slotColor = 'amber';
+      }
+      return {
+        id: slot.id,
+        time: slot.time,
+        expectedMembers: exp,
+        fill,
+        status: slotStatus,
+        color: slotColor
+      };
+    });
+
+    const liveOccupancy = {
+      maxCapacity,
+      currentMembers,
+      percentage: occupancyPercent,
+      status: occupancyStatus,
+      color: occupancyColor
+    };
 
     res.json({
       member: {
@@ -249,7 +299,8 @@ router.get('/me', memberAuthMiddleware, (req, res) => {
       membershipHistory: memberships,
       payments,
       announcements,
-      peakHours
+      peakHours,
+      occupancy: liveOccupancy
     });
   } catch (err) {
     console.error('Portal Me Error:', err);

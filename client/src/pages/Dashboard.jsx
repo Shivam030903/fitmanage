@@ -38,6 +38,7 @@ export default function Dashboard() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [selectedCustomerForWhatsApp, setSelectedCustomerForWhatsApp] = useState(null);
+  const [occupancy, setOccupancy] = useState(null);
 
   const navigate = useNavigate();
 
@@ -54,8 +55,42 @@ export default function Dashboard() {
     }
   };
 
+  const fetchOccupancy = async () => {
+    try {
+      const data = await api.getOccupancy();
+      setOccupancy(data);
+    } catch (e) {
+      console.warn('Occupancy load error:', e);
+    }
+  };
+
+  const handleStepOccupancy = async (delta) => {
+    if (!occupancy) return;
+    const updated = Math.max(0, occupancy.currentMembers + delta);
+    setOccupancy(prev => {
+      const percent = Math.min(100, Math.round((updated / prev.maxCapacity) * 100));
+      return {
+        ...prev,
+        currentMembers: updated,
+        percentage: percent,
+        status: percent >= 75 ? 'Peak Hours' : percent >= 40 ? 'Moderate' : 'Quiet & Open',
+        color: percent >= 75 ? 'rose' : percent >= 40 ? 'amber' : 'emerald'
+      };
+    });
+    try {
+      await api.updateOccupancy({
+        maxCapacity: occupancy.maxCapacity,
+        currentMembers: updated,
+        slots: occupancy.slots
+      });
+    } catch (e) {
+      console.error(e);
+    }
+  };
+
   useEffect(() => {
     fetchStats();
+    fetchOccupancy();
   }, []);
 
   if (loading) {
@@ -121,6 +156,59 @@ export default function Dashboard() {
           </div>
         </div>
       </div>
+
+      {/* Live Studio Occupancy Front-Desk Widget */}
+      {occupancy && (
+        <div className="bg-white rounded-2xl p-4 border border-slate-200/80 shadow-sm flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center space-x-3">
+            <div className={`p-2.5 rounded-xl ${
+              occupancy.color === 'rose' ? 'bg-rose-50 text-rose-600' : occupancy.color === 'amber' ? 'bg-amber-50 text-amber-600' : 'bg-emerald-50 text-emerald-600'
+            }`}>
+              <Users className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center space-x-2">
+                <span className="font-extrabold text-slate-900 text-xs uppercase tracking-wider">Live Gym Floor Occupancy</span>
+                <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  occupancy.color === 'rose' ? 'bg-rose-100 text-rose-800' : occupancy.color === 'amber' ? 'bg-amber-100 text-amber-800' : 'bg-emerald-100 text-emerald-800'
+                }`}>
+                  {occupancy.status} ({occupancy.percentage}%)
+                </span>
+              </div>
+              <p className="text-[11px] text-slate-500 mt-0.5">
+                Front desk live counter: <strong className="text-slate-900 font-mono">{occupancy.currentMembers}</strong> of <strong className="text-slate-900 font-mono">{occupancy.maxCapacity}</strong> members currently on floor.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2 self-end sm:self-auto">
+            <span className="text-xs text-slate-400 font-medium mr-1">Quick Count:</span>
+            <button
+              onClick={() => handleStepOccupancy(-1)}
+              className="w-8 h-8 rounded-lg bg-slate-100 hover:bg-slate-200 font-bold text-slate-700 flex items-center justify-center transition-all active:scale-95 text-xs"
+              title="One member left"
+            >
+              -1
+            </button>
+            <span className="w-12 text-center font-mono font-black text-sm text-slate-900">
+              {occupancy.currentMembers}
+            </span>
+            <button
+              onClick={() => handleStepOccupancy(1)}
+              className="w-8 h-8 rounded-lg bg-emerald-500 hover:bg-emerald-400 font-bold text-slate-950 flex items-center justify-center transition-all active:scale-95 text-xs shadow-sm"
+              title="One member entered"
+            >
+              +1
+            </button>
+            <button
+              onClick={() => navigate('/settings')}
+              className="ml-2 text-xs text-slate-400 hover:text-emerald-600 font-semibold underline"
+            >
+              Settings
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* KPI Cards Row (6 Primary Metrics) */}
       <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
