@@ -9,7 +9,8 @@ import {
   Phone, 
   Calendar, 
   History,
-  Filter
+  Filter,
+  RefreshCw
 } from 'lucide-react';
 import { api } from '../services/api';
 import WhatsAppModal from '../components/WhatsAppModal';
@@ -20,8 +21,23 @@ export default function Reminders() {
   const [filterType, setFilterType] = useState('all');
   const [selectedCustomerForWhatsApp, setSelectedCustomerForWhatsApp] = useState(null);
   const [initialTemplate, setInitialTemplate] = useState('expiringSoon');
+  const [scanningMultiStage, setScanningMultiStage] = useState(false);
 
   const navigate = useNavigate();
+
+  const handleRunMultiStageScan = async () => {
+    setScanningMultiStage(true);
+    try {
+      const res = await api.scanMultiStageExpiry();
+      const count = res.result?.dispatchedCount || 0;
+      alert(`Automated Multi-Stage Scan Complete!\n\nDispatched ${count} reminder(s) via linked WhatsApp.`);
+      fetchReminders();
+    } catch (err) {
+      alert(err.message || 'Failed to run multi-stage scan.');
+    } finally {
+      setScanningMultiStage(false);
+    }
+  };
 
   const fetchReminders = async () => {
     try {
@@ -62,7 +78,6 @@ export default function Reminders() {
             { label: 'Expiring (7d)', value: 'expiring_soon' },
             { label: 'Expires Today', value: 'expiry_today' },
             { label: 'Expired', value: 'expired' },
-            { label: 'Pending Dues', value: 'pending_payment' },
           ].map((btn) => (
             <button
               key={btn.value}
@@ -77,6 +92,36 @@ export default function Reminders() {
             </button>
           ))}
         </div>
+      </div>
+
+      {/* Automated Multi-Stage Expiry Follow-ups Banner */}
+      <div className="bg-emerald-50/70 border border-emerald-200/90 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs shadow-sm">
+        <div className="flex items-start space-x-3">
+          <div className="w-9 h-9 rounded-xl bg-emerald-500 text-slate-950 flex items-center justify-center font-bold flex-shrink-0 shadow-sm">
+            <Clock className="w-5 h-5 text-slate-950" />
+          </div>
+          <div>
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-extrabold text-slate-900 text-sm">Automated Multi-Stage Expiry Follow-ups</span>
+              <span className="bg-emerald-100 text-emerald-800 border border-emerald-300 font-bold px-2 py-0.5 rounded-full text-[10px] flex items-center space-x-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                <span>Background Engine Active</span>
+              </span>
+            </div>
+            <p className="text-[11px] text-slate-600 mt-0.5">
+              Automatically scans & dispatches WhatsApp reminders across 4 key stages: <strong>7 days before</strong>, <strong>1 day before</strong>, <strong>expiry day</strong>, and <strong>3 days comeback</strong> from your linked gym phone.
+            </p>
+          </div>
+        </div>
+
+        <button
+          onClick={handleRunMultiStageScan}
+          disabled={scanningMultiStage}
+          className="self-start sm:self-auto px-4 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition-all flex items-center space-x-1.5 flex-shrink-0 disabled:opacity-50"
+        >
+          <RefreshCw className={`w-3.5 h-3.5 ${scanningMultiStage ? 'animate-spin' : ''}`} />
+          <span>{scanningMultiStage ? 'Scanning Members...' : 'Run Auto Scan Now'}</span>
+        </button>
       </div>
 
       {/* Reminder Queue Cards */}
@@ -147,7 +192,7 @@ export default function Reminders() {
                         </span>
                       </div>
                       <div className="flex justify-between text-slate-600">
-                        <span>Primary Mobile:</span>
+                        <span>Mobile Number:</span>
                         <span className="font-mono font-semibold text-slate-900">+91 {item.primaryPhone || '—'}</span>
                       </div>
                       {item.lastReminderSent && (

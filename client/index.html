@@ -29,11 +29,31 @@
     <div id="root"></div>
     <script type="module" src="/src/main.jsx"></script>
     <script>
-      // Register Service Worker for PWA
+      // Early catch of beforeinstallprompt for PWA install button
+      window.addEventListener('beforeinstallprompt', (e) => {
+        e.preventDefault();
+        window.deferredPWAEvent = e;
+      });
+
+      // Register Service Worker for PWA with automatic fresh update detection
       if ('serviceWorker' in navigator) {
         window.addEventListener('load', () => {
           navigator.serviceWorker.register('/sw.js')
-            .then(reg => console.log('FitManage PWA Service Worker registered:', reg.scope))
+            .then(reg => {
+              console.log('FitManage PWA Service Worker registered:', reg.scope);
+              reg.update();
+              reg.onupdatefound = () => {
+                const newWorker = reg.installing;
+                if (newWorker) {
+                  newWorker.onstatechange = () => {
+                    if (newWorker.state === 'installed' && navigator.serviceWorker.controller) {
+                      console.log('New FitManage version installed, reloading fresh...');
+                      window.location.reload();
+                    }
+                  };
+                }
+              };
+            })
             .catch(err => console.log('Service Worker registration failed:', err));
         });
       }

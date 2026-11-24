@@ -1,6 +1,8 @@
 import express from 'express';
 import { db } from '../db.js';
 import { authMiddleware, roleCheck } from '../middleware/auth.js';
+import { whatsappService } from '../services/whatsapp.js';
+import { whatsappWebService } from '../services/whatsappWeb.js';
 
 const router = express.Router();
 router.use(authMiddleware);
@@ -43,7 +45,19 @@ router.put('/profile', roleCheck(['owner', 'admin']), (req, res) => {
         gstin: gstin !== undefined ? gstin : existing.gstin,
         settings: {
           ...existing.settings,
-          ...settings
+          ...settings,
+          whatsapp: {
+            ...(existing.settings?.whatsapp || {}),
+            ...(settings?.whatsapp || {})
+          },
+          whatsappTemplates: {
+            ...(existing.settings?.whatsappTemplates || {}),
+            ...(settings?.whatsappTemplates || {})
+          },
+          multiStageExpiry: {
+            ...(existing.settings?.multiStageExpiry || {}),
+            ...(settings?.multiStageExpiry || {})
+          }
         }
       }
     );
@@ -119,6 +133,46 @@ router.delete('/plans/:id', roleCheck(['owner', 'admin']), (req, res) => {
   } catch (err) {
     res.status(500).json({ error: 'Failed to delete plan.' });
   }
+});
+
+// POST /api/settings/test-whatsapp - Send test WhatsApp message
+router.post('/test-whatsapp', roleCheck(['owner', 'admin']), async (req, res) => {
+  try {
+    const { gymId, user } = req;
+    const { testPhone } = req.body;
+
+    if (!testPhone) {
+      return res.status(400).json({ error: 'Phone number is required for test message.' });
+    }
+
+    const result = await whatsappService.testWhatsAppGateway({
+      gymId,
+      testPhone,
+      staffName: user.name
+    });
+
+    res.json({ message: 'Test WhatsApp message dispatched.', result });
+  } catch (err) {
+    console.error('Test WhatsApp Error:', err);
+    res.status(500).json({ error: 'Failed to dispatch test message: ' + err.message });
+  }
+});
+
+// GET /api/settings/whatsapp-qr - Get WhatsApp Web QR connection status
+router.get('/whatsapp-qr', (req, res) => {
+  res.json(whatsappWebService.getStatus());
+});
+
+// POST /api/settings/whatsapp-qr/reconnect - Refresh QR code
+router.post('/whatsapp-qr/reconnect', (req, res) => {
+  whatsappWebService.init();
+  res.json(whatsappWebService.getStatus());
+});
+
+// POST /api/settings/whatsapp-qr/disconnect - Disconnect linked WhatsApp device
+router.post('/whatsapp-qr/disconnect', async (req, res) => {
+  const result = await whatsappWebService.logout();
+  res.json(result);
 });
 
 export default router;

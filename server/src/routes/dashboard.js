@@ -49,8 +49,6 @@ router.get('/stats', (req, res) => {
         id: c._id,
         name: c.name,
         phone: c.contacts?.primary || '',
-        secondaryPhone: c.contacts?.secondary || '',
-        emergencyPhone: c.contacts?.emergency || '',
         planName: c.currentMembership?.planName || 'Standard',
         expiryDate: c.currentMembership?.endDate || '',
         daysRemaining: c.daysRemaining,

@@ -13,12 +13,45 @@
   {
     "_id": "user_reception_01",
     "name": "Pooja Sharma",
-    "email": "receptionist@fitmanage.io",
+    "email": "admin@fitmanage.io",
     "password": "$2a$10$gEfwVfvKdtgk2aLzNkPg7eQqxwO1iyNgmU6MhH12Nm3zHfpEgRbRG",
-    "role": "receptionist",
+    "role": "admin",
     "phone": "+91 98200 88888",
     "gymId": "gym_fitzone_01",
     "createdAt": "2026-11-18T07:55:45.677Z",
     "updatedAt": "2026-11-18T07:55:45.677Z"
+  },
+  {
+    "_id": "user_reception_alias",
+    "name": "Pooja Sharma",
+    "email": "receptionist@fitmanage.io",
+    "password": "$2a$10$gEfwVfvKdtgk2aLzNkPg7eQqxwO1iyNgmU6MhH12Nm3zHfpEgRbRG",
+    "role": "admin",
+    "phone": "+91 98200 88888",
+    "gymId": "gym_fitzone_01",
+    "createdAt": "2026-11-18T07:55:45.677Z",
+    "updatedAt": "2026-11-18T07:55:45.677Z"
+  },
+  {
+    "_id": "id_1795008843103_ov0f2e",
+    "name": "Versha Jain",
+    "email": "jainveraha8@gmail.com",
+    "password": "$2a$10$Ta4yzXIFizJLvy/hvbJc8.PisV67GAmXxWGVDaMKRJywJD/yvJOiu",
+    "phone": "09315069019",
+    "role": "owner",
+    "gymId": "gym_1795008842889",
+    "createdAt": "2026-11-18T13:34:03.103Z",
+    "updatedAt": "2026-11-18T13:34:03.103Z"
+  },
+  {
+    "_id": "id_1795021748339_0x07vi",
+    "name": "shivam jain",
+    "email": "soravjain453@gmail.com",
+    "password": "$2a$10$Uett5b34WYuvI/qwqj3SL.b.8QqTrsJGeRbOse.YLsCxkxHjM7Czy",
+    "phone": "9212151697",
+    "role": "owner",
+    "gymId": "gym_1795021748195",
+    "createdAt": "2026-11-18T17:09:08.339Z",
+    "updatedAt": "2026-11-18T17:09:08.339Z"
   }
 ]

@@ -89,12 +89,12 @@ export default function Login() {
             <button
               type="button"
               disabled={loading}
-              onClick={() => handleQuickLogin('receptionist@fitmanage.io', 'password123')}
+              onClick={() => handleQuickLogin('admin@fitmanage.io', 'password123')}
               className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-emerald-500 hover:text-slate-950 text-slate-200 border border-slate-700 font-semibold transition-all flex flex-col items-center justify-center space-y-1 group"
             >
               <UserCheck className="w-4 h-4 text-teal-400 group-hover:text-slate-950" />
-              <span>Login as Staff</span>
-              <span className="text-[10px] text-slate-400 group-hover:text-slate-900 font-normal">Pooja (Receptionist)</span>
+              <span>Login as Admin</span>
+              <span className="text-[10px] text-slate-400 group-hover:text-slate-900 font-normal">Pooja (Admin Operations)</span>
             </button>
           </div>
         </div>

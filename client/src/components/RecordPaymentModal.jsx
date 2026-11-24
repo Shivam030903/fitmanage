@@ -9,6 +9,12 @@ export default function RecordPaymentModal({ isOpen, onClose, customer, onPaymen
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
 
+  React.useEffect(() => {
+    if (customer && isOpen) {
+      setAmountPaid(customer.outstandingBalance || customer.currentMembership?.amount || '');
+    }
+  }, [customer, isOpen]);
+
   if (!isOpen || !customer) return null;
 
   const pending = customer.outstandingBalance || 0;
@@ -25,7 +31,7 @@ export default function RecordPaymentModal({ isOpen, onClose, customer, onPaymen
       const res = await api.recordPayment({
         customerId: customer.customerId,
         membershipId: customer.currentMembership?._id || null,
-        totalAmount: pending || Number(amountPaid),
+        totalAmount: Number(amountPaid),
         amountPaid: Number(amountPaid),
         paymentMethod,
         paymentDate,
@@ -65,13 +71,6 @@ export default function RecordPaymentModal({ isOpen, onClose, customer, onPaymen
           </button>
         </div>
 
-        {pending > 0 && (
-          <div className="p-3 bg-amber-50 rounded-xl border border-amber-200 flex items-center justify-between text-xs">
-            <span className="text-amber-800 font-medium">Current Outstanding Balance:</span>
-            <span className="font-mono font-bold text-amber-900 text-sm">₹{pending.toLocaleString('en-IN')}</span>
-          </div>
-        )}
-
         <form onSubmit={handleSubmit} className="space-y-3.5 text-xs">
           <div>
             <label className="block font-semibold text-slate-700 mb-1">Amount to Collect (₹)</label>
@@ -79,21 +78,11 @@ export default function RecordPaymentModal({ isOpen, onClose, customer, onPaymen
               type="number"
               required
               min="1"
-              max={pending > 0 ? pending : undefined}
-              placeholder={pending > 0 ? `Max ₹${pending}` : 'Enter amount'}
+              placeholder="Enter amount (₹)"
               value={amountPaid}
               onChange={(e) => setAmountPaid(e.target.value)}
               className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 text-sm font-mono font-bold text-slate-900"
             />
-            {pending > 0 && (
-              <button
-                type="button"
-                onClick={() => setAmountPaid(pending)}
-                className="text-[11px] text-emerald-600 font-semibold hover:underline mt-1 inline-block"
-              >
-                Clear full pending amount (₹{pending.toLocaleString('en-IN')})
-              </button>
-            )}
           </div>
 
           <div>
@@ -103,10 +92,8 @@ export default function RecordPaymentModal({ isOpen, onClose, customer, onPaymen
               onChange={(e) => setPaymentMethod(e.target.value)}
               className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 text-xs"
             >
-              <option value="UPI">UPI (GPay, PhonePe, Paytm)</option>
+              <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
               <option value="Cash">Cash</option>
-              <option value="Debit/Credit Card">Debit / Credit Card</option>
-              <option value="Bank Transfer">Bank Transfer (IMPS / NEFT)</option>
               <option value="Other">Other</option>
             </select>
           </div>

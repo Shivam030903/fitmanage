@@ -2,6 +2,7 @@ import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import bcrypt from 'bcryptjs';
+import { MongoClient } from 'mongodb';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -54,14 +55,18 @@ export function getDaysRemaining(endDateStr) {
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }
 
-class JsonCollection {
+let mongoClient = null;
+let mongoDb = null;
+
+class MongoCollection {
   constructor(name) {
     this.name = name;
     this.filePath = path.join(DATA_DIR, `${name}.json`);
-    this.data = this.load();
+    this.data = this.loadLocal();
+    this.atlasCol = null;
   }
 
-  load() {
+  loadLocal() {
     try {
       if (fs.existsSync(this.filePath)) {
         const raw = fs.readFileSync(this.filePath, 'utf-8');
@@ -73,11 +78,30 @@ class JsonCollection {
     return [];
   }
 
-  save() {
+  saveLocal() {
     try {
       fs.writeFileSync(this.filePath, JSON.stringify(this.data, null, 2), 'utf-8');
     } catch (e) {
       console.error(`Error saving collection ${this.name}:`, e);
+    }
+  }
+
+  async initAtlasSync(dbInstance) {
+    this.atlasCol = dbInstance.collection(this.name);
+    try {
+      const atlasCount = await this.atlasCol.countDocuments();
+      if (atlasCount === 0 && this.data.length > 0) {
+        // First-time sync: Upload local documents into MongoDB Atlas
+        console.log(`[MongoDB Atlas] Migrating ${this.data.length} records into Atlas collection: ${this.name}...`);
+        await this.atlasCol.insertMany(this.data.map(d => ({ ...d })));
+      } else if (atlasCount > 0) {
+        // Atlas has data: sync cloud documents into local cache
+        const docs = await this.atlasCol.find({}).toArray();
+        this.data = docs;
+        this.saveLocal();
+      }
+    } catch (err) {
+      console.error(`[MongoDB Atlas] Sync error on ${this.name}:`, err.message);
     }
   }
 
@@ -112,15 +136,33 @@ class JsonCollection {
       updatedAt: doc.updatedAt || new Date().toISOString()
     };
     this.data.push(newDoc);
-    this.save();
+    this.saveLocal();
+
+    // Persist asynchronously to MongoDB Atlas
+    if (this.atlasCol) {
+      this.atlasCol.insertOne({ ...newDoc }).catch(err => {
+        console.error(`[MongoDB Atlas] insertOne error in ${this.name}:`, err.message);
+      });
+    }
+
     return newDoc;
   }
 
   updateOne(query, updateData) {
     const item = this.findOne(query);
     if (!item) return null;
-    Object.assign(item, updateData, { updatedAt: new Date().toISOString() });
-    this.save();
+    const updatedAt = new Date().toISOString();
+    Object.assign(item, updateData, { updatedAt });
+    this.saveLocal();
+
+    // Persist asynchronously to MongoDB Atlas
+    if (this.atlasCol) {
+      const filter = item._id ? { _id: item._id } : query;
+      this.atlasCol.updateOne(filter, { $set: { ...updateData, updatedAt } }).catch(err => {
+        console.error(`[MongoDB Atlas] updateOne error in ${this.name}:`, err.message);
+      });
+    }
+
     return item;
   }
 
@@ -133,7 +175,16 @@ class JsonCollection {
     });
     if (idx !== -1) {
       const removed = this.data.splice(idx, 1)[0];
-      this.save();
+      this.saveLocal();
+
+      // Persist asynchronously to MongoDB Atlas
+      if (this.atlasCol) {
+        const filter = removed._id ? { _id: removed._id } : query;
+        this.atlasCol.deleteOne(filter).catch(err => {
+          console.error(`[MongoDB Atlas] deleteOne error in ${this.name}:`, err.message);
+        });
+      }
+
       return removed;
     }
     return null;
@@ -145,14 +196,42 @@ class JsonCollection {
 }
 
 export const db = {
-  users: new JsonCollection('users'),
-  gyms: new JsonCollection('gyms'),
-  customers: new JsonCollection('customers'),
-  memberships: new JsonCollection('memberships'),
-  payments: new JsonCollection('payments'),
-  reminderLogs: new JsonCollection('reminderLogs'),
-  plans: new JsonCollection('plans')
+  users: new MongoCollection('users'),
+  gyms: new MongoCollection('gyms'),
+  customers: new MongoCollection('customers'),
+  memberships: new MongoCollection('memberships'),
+  payments: new MongoCollection('payments'),
+  reminderLogs: new MongoCollection('reminderLogs'),
+  plans: new MongoCollection('plans')
 };
+
+export function getMongoDb() {
+  return mongoDb;
+}
+
+export async function connectMongoDB() {
+  const uri = process.env.MONGODB_URI;
+  if (!uri) {
+    console.log('[DB] No MONGODB_URI set, running with local file store.');
+    return;
+  }
+
+  try {
+    console.log('[MongoDB Atlas] Connecting to cluster...');
+    mongoClient = new MongoClient(uri);
+    await mongoClient.connect();
+    mongoDb = mongoClient.db('fitmanage');
+    console.log('✅ [MongoDB Atlas] Connected successfully to database: fitmanage');
+
+    // Initialize Atlas sync on all 7 collections
+    for (const [name, col] of Object.entries(db)) {
+      await col.initAtlasSync(mongoDb);
+    }
+    console.log('✅ [MongoDB Atlas] All 7 collections synchronized with MongoDB Atlas.');
+  } catch (err) {
+    console.error('⚠️ [MongoDB Atlas] Connection failed:', err.message);
+  }
+}
 
 // Seed realistic Indian Gym data if empty
 export async function seedInitialData() {

@@ -1,12 +1,25 @@
-import React, { useState } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Download, Dumbbell, Bell } from 'lucide-react';
+import { Search, Download, Dumbbell, Bell, MoreVertical, LogOut, Settings, ShieldCheck, RefreshCw, User } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Header({ title, onInstallClick, isInstallable }) {
-  const { gym } = useAuth();
+  const { user, gym, logout } = useAuth();
   const [searchQuery, setSearchQuery] = useState('');
+  const [showMenu, setShowMenu] = useState(false);
+  const menuRef = useRef(null);
   const navigate = useNavigate();
+
+  // Close 3-dots dropdown when clicking outside
+  useEffect(() => {
+    function handleClickOutside(event) {
+      if (menuRef.current && !menuRef.current.contains(event.target)) {
+        setShowMenu(false);
+      }
+    }
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleSearchSubmit = (e) => {
     e.preventDefault();
@@ -14,6 +27,30 @@ export default function Header({ title, onInstallClick, isInstallable }) {
       navigate(`/customers?search=${encodeURIComponent(searchQuery.trim())}`);
       setSearchQuery('');
     }
+  };
+
+  const handleLogout = () => {
+    setShowMenu(false);
+    logout();
+    navigate('/login');
+  };
+
+  const handleClearCacheAndReload = async () => {
+    try {
+      if ('caches' in window) {
+        const names = await caches.keys();
+        await Promise.all(names.map((name) => caches.delete(name)));
+      }
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (let reg of registrations) {
+          await reg.unregister();
+        }
+      }
+    } catch (err) {
+      console.warn('Error clearing cache:', err);
+    }
+    window.location.reload(true);
   };
 
   const todayStr = new Intl.DateTimeFormat('en-IN', {
@@ -40,7 +77,7 @@ export default function Header({ title, onInstallClick, isInstallable }) {
       </div>
 
       {/* Global Quick Search + Action Buttons */}
-      <div className="flex items-center space-x-3">
+      <div className="flex items-center space-x-2 sm:space-x-3">
         {/* Quick Search form */}
         <form onSubmit={handleSearchSubmit} className="relative hidden sm:block w-48 md:w-72">
           <input
@@ -72,6 +109,83 @@ export default function Header({ title, onInstallClick, isInstallable }) {
           <Bell className="w-4 h-4" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-emerald-500 ring-2 ring-white"></span>
         </button>
+
+        {/* 3-Dots Menu Dropdown (Web & Mobile Header) */}
+        <div className="relative" ref={menuRef}>
+          <button
+            type="button"
+            onClick={() => setShowMenu(!showMenu)}
+            className={`p-2 rounded-xl transition-all ${
+              showMenu
+                ? 'bg-emerald-50 text-emerald-700 ring-2 ring-emerald-500/30'
+                : 'text-slate-600 hover:text-slate-900 hover:bg-slate-100'
+            }`}
+            title="Account & More Options"
+            aria-label="Account & More Options"
+          >
+            <MoreVertical className="w-4 h-4" />
+          </button>
+
+          {showMenu && (
+            <div className="absolute right-0 mt-2 w-64 bg-white rounded-2xl shadow-2xl border border-slate-200/90 p-2 z-50 animate-in fade-in zoom-in-95 origin-top-right">
+              {/* User Profile Card */}
+              <div className="p-3 bg-slate-50 rounded-xl mb-1 flex items-center space-x-3 border border-slate-100">
+                <div className="w-9 h-9 rounded-full bg-slate-900 text-emerald-400 font-bold flex items-center justify-center text-xs uppercase shadow-sm">
+                  {user?.name?.charAt(0) || 'U'}
+                </div>
+                <div className="overflow-hidden">
+                  <p className="text-xs font-bold text-slate-900 truncate leading-tight">{user?.name || 'User'}</p>
+                  <p className="text-[10px] text-emerald-600 capitalize font-medium">{user?.role} • {gym?.gymName || 'FitManage'}</p>
+                </div>
+              </div>
+
+              {/* Quick Navigation Items */}
+              <div className="space-y-0.5 py-1 text-xs">
+                <button
+                  type="button"
+                  onClick={() => { setShowMenu(false); navigate('/settings'); }}
+                  className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                >
+                  <Settings className="w-4 h-4 text-slate-400" />
+                  <span>Gym Settings</span>
+                </button>
+
+                {(user?.role === 'owner' || user?.role === 'admin') && (
+                  <button
+                    type="button"
+                    onClick={() => { setShowMenu(false); navigate('/staff'); }}
+                    className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                  >
+                    <ShieldCheck className="w-4 h-4 text-slate-400" />
+                    <span>Staff & Roles</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={handleClearCacheAndReload}
+                  className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                  title="Purge cached files and reload fresh version"
+                >
+                  <RefreshCw className="w-4 h-4 text-slate-400" />
+                  <span>Refresh & Clear Cache</span>
+                </button>
+              </div>
+
+              {/* Log Out Action */}
+              <div className="pt-1 mt-1 border-t border-slate-100">
+                <button
+                  type="button"
+                  onClick={handleLogout}
+                  className="w-full flex items-center space-x-2.5 px-3 py-2.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs transition-colors text-left border border-rose-100"
+                >
+                  <LogOut className="w-4 h-4 text-rose-500" />
+                  <span>Log Out</span>
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
       </div>
     </header>
   );

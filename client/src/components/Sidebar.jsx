@@ -11,7 +11,9 @@ import {
   ShieldCheck, 
   LogOut, 
   RefreshCw,
-  Dumbbell
+  Dumbbell,
+  QrCode,
+  ExternalLink
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -98,6 +100,22 @@ export default function Sidebar() {
             </NavLink>
           );
         })}
+
+        {/* Member Self-Service Portal Quick Access */}
+        <div className="pt-3">
+          <a
+            href="/portal"
+            target="_blank"
+            rel="noreferrer"
+            className="flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 border border-emerald-500/30 transition-all"
+          >
+            <div className="flex items-center space-x-2.5">
+              <QrCode className="w-4 h-4 text-emerald-400" />
+              <span>Member Portal Pass</span>
+            </div>
+            <ExternalLink className="w-3.5 h-3.5 opacity-70" />
+          </a>
+        </div>
       </nav>
 
       {/* User profile & sign out footer */}

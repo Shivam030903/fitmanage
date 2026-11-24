@@ -24,7 +24,7 @@ router.get('/', (req, res) => {
 router.post('/', roleCheck(['owner', 'admin']), async (req, res) => {
   try {
     const { gymId } = req;
-    const { name, email, password, role = 'receptionist', phone } = req.body;
+    const { name, email, password, role = 'admin', phone } = req.body;
 
     if (!name || !email || !password) {
       return res.status(400).json({ error: 'Name, email, and password are required.' });
@@ -37,13 +37,14 @@ router.post('/', roleCheck(['owner', 'admin']), async (req, res) => {
 
     const salt = await bcrypt.genSalt(10);
     const passwordHash = await bcrypt.hash(password, salt);
+    const assignedRole = role === 'owner' ? 'owner' : 'admin';
 
     const newUser = db.users.insertOne({
       gymId,
       name: name.trim(),
       email: email.toLowerCase().trim(),
       password: passwordHash,
-      role,
+      role: assignedRole,
       phone: phone || ''
     });
 

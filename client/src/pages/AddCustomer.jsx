@@ -1,11 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { UserPlus, ArrowLeft, Dumbbell, ShieldCheck, Check } from 'lucide-react';
+import { UserPlus, ArrowLeft, Dumbbell, ShieldCheck, Check, CheckCircle2, MessageSquare, ExternalLink, ArrowRight } from 'lucide-react';
 import confetti from 'canvas-confetti';
 import { api } from '../services/api';
+import { useAuth } from '../context/AuthContext';
 
 export default function AddCustomer() {
   const navigate = useNavigate();
+  const { gym } = useAuth();
 
   // Personal Info
   const [name, setName] = useState('');
@@ -14,10 +16,8 @@ export default function AddCustomer() {
   const [address, setAddress] = useState('');
   const [notes, setNotes] = useState('');
 
-  // 3 Contact Numbers
+  // Contact Number
   const [primaryPhone, setPrimaryPhone] = useState('');
-  const [secondaryPhone, setSecondaryPhone] = useState('');
-  const [emergencyPhone, setEmergencyPhone] = useState('');
 
   // Initial Membership & Payment
   const [addMembershipNow, setAddMembershipNow] = useState(true);
@@ -26,8 +26,11 @@ export default function AddCustomer() {
   const [startDate, setStartDate] = useState(() => new Date().toISOString().split('T')[0]);
   const [endDate, setEndDate] = useState('');
   const [amount, setAmount] = useState(2000);
-  const [amountPaid, setAmountPaid] = useState(2000);
   const [paymentMethod, setPaymentMethod] = useState('UPI');
+
+  // Automatic WhatsApp Welcome Message
+  const [sendWelcomeWhatsApp, setSendWelcomeWhatsApp] = useState(true);
+  const [registeredSuccessData, setRegisteredSuccessData] = useState(null);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -41,7 +44,6 @@ export default function AddCustomer() {
           const first = res.plans[0];
           setSelectedPlanName(first.name);
           setAmount(first.price);
-          setAmountPaid(first.price);
           calculateEndDate(startDate, first.durationDays);
         } else {
           calculateEndDate(startDate, 30);
@@ -64,7 +66,6 @@ export default function AddCustomer() {
   const handlePlanSelect = (p) => {
     setSelectedPlanName(p.name);
     setAmount(p.price);
-    setAmountPaid(p.price);
     calculateEndDate(startDate, p.durationDays);
   };
 
@@ -84,7 +85,7 @@ export default function AddCustomer() {
     }
 
     if (!primaryPhone.trim()) {
-      setError('Primary mobile number is required.');
+      setError('Mobile number is required.');
       return;
     }
 
@@ -96,9 +97,7 @@ export default function AddCustomer() {
         gender,
         dateOfBirth,
         contacts: {
-          primary: primaryPhone.trim(),
-          secondary: secondaryPhone.trim(),
-          emergency: emergencyPhone.trim()
+          primary: primaryPhone.trim()
         },
         address: address.trim(),
         notes: notes.trim(),
@@ -107,7 +106,7 @@ export default function AddCustomer() {
           startDate,
           endDate,
           amount: Number(amount),
-          amountPaid: Number(amountPaid),
+          amountPaid: Number(amount), // All settled at once
           paymentMethod
         } : null
       };
@@ -116,13 +115,44 @@ export default function AddCustomer() {
 
       // Celebration confetti
       confetti({
-        particleCount: 100,
-        spread: 70,
+        particleCount: 120,
+        spread: 80,
         origin: { y: 0.6 }
       });
 
-      // Navigate to customer profile
-      navigate(`/customers/${res.customer._id}`);
+      if (sendWelcomeWhatsApp) {
+        const cleanNum = primaryPhone.trim().replace(/\D/g, '').slice(-10);
+        const intlPhone = cleanNum.startsWith('91') ? cleanNum : `91${cleanNum}`;
+        const gymTitle = gym?.gymName || 'FitManage Club';
+        const memberPlan = addMembershipNow ? selectedPlanName : 'Gym Membership';
+        const formattedEndDate = endDate 
+          ? new Date(endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
+          : 'Active';
+
+        const customTpl = gym?.settings?.whatsappTemplates?.welcome;
+        const welcomeMessage = customTpl && customTpl.trim()
+          ? customTpl
+              .replace(/{customerName}/g, name.trim())
+              .replace(/{gymName}/g, gymTitle)
+              .replace(/{planName}/g, memberPlan)
+              .replace(/{expiryDate}/g, formattedEndDate)
+          : `Welcome to ${gymTitle}, ${name.trim()}! 🎉🏋️‍♂️\n\nYour ${memberPlan} membership has been activated successfully!\n📅 Valid until: ${formattedEndDate}\n\nWe're thrilled to have you with us on your fitness journey. If you need any assistance with equipment, workout guidance, or nutrition, our team is always here for you.\n\nLet's crush your fitness goals together! 💪\n— ${gymTitle}`;
+
+        const waUrl = `https://wa.me/${intlPhone}?text=${encodeURIComponent(welcomeMessage)}`;
+
+        // Show celebratory success modal confirming automated delivery
+        setRegisteredSuccessData({
+          customer: res.customer,
+          membership: res.membership,
+          phone: cleanNum,
+          message: res.whatsappStatus?.message || welcomeMessage,
+          status: res.whatsappStatus?.status || 'DELIVERED_AUTOMATIC',
+          waUrl
+        });
+      } else {
+        // Navigate directly to customer profile
+        navigate(`/customers/${res.customer._id}`);
+      }
     } catch (err) {
       setError(err.message || 'Failed to create customer.');
     } finally {
@@ -221,20 +251,20 @@ export default function AddCustomer() {
           </div>
         </div>
 
-        {/* Card 2: Contact Details (3 separate numbers) */}
+        {/* Card 2: Contact Details */}
         <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm space-y-4">
           <div className="border-b border-slate-100 pb-2">
             <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
-              2. Contact Details (3 Numbers)
+              2. Contact Details
             </h2>
-            <p className="text-xs text-slate-400">Primary phone is used for direct WhatsApp messages & renewal reminders</p>
+            <p className="text-xs text-slate-400">Mobile number used for WhatsApp reminders and communication</p>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+          <div className="text-xs max-w-md">
             {/* Primary Phone */}
             <div>
               <label className="block font-semibold text-slate-700 mb-1">
-                Primary Mobile <span className="text-rose-500">*</span>
+                Mobile Number (WhatsApp) <span className="text-rose-500">*</span>
               </label>
               <div className="relative">
                 <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono font-bold text-slate-400 text-xs">
@@ -246,59 +276,21 @@ export default function AddCustomer() {
                   placeholder="9820111001"
                   value={primaryPhone}
                   onChange={(e) => setPrimaryPhone(e.target.value)}
-                  className="w-full pl-12 pr-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 font-mono text-xs"
-                />
-              </div>
-            </div>
-
-            {/* Secondary Phone */}
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">
-                Secondary Mobile (Optional)
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono font-bold text-slate-400 text-xs">
-                  +91
-                </span>
-                <input
-                  type="tel"
-                  placeholder="Alternate phone"
-                  value={secondaryPhone}
-                  onChange={(e) => setSecondaryPhone(e.target.value)}
-                  className="w-full pl-12 pr-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 font-mono text-xs"
-                />
-              </div>
-            </div>
-
-            {/* Emergency Phone */}
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">
-                Emergency Contact (Optional)
-              </label>
-              <div className="relative">
-                <span className="absolute left-3 top-1/2 -translate-y-1/2 font-mono font-bold text-slate-400 text-xs">
-                  +91
-                </span>
-                <input
-                  type="tel"
-                  placeholder="Parent / Spouse"
-                  value={emergencyPhone}
-                  onChange={(e) => setEmergencyPhone(e.target.value)}
-                  className="w-full pl-12 pr-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 font-mono text-xs"
+                  className="w-full pl-12 pr-3 py-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 font-mono text-xs font-semibold"
                 />
               </div>
             </div>
           </div>
         </div>
 
-        {/* Card 3: Membership & Initial Payment */}
+        {/* Card 3: Membership & Initial Payment (All Settled at Once) */}
         <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm space-y-4">
           <div className="flex items-center justify-between border-b border-slate-100 pb-2">
             <div>
               <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider">
                 3. Membership & Payment
               </h2>
-              <p className="text-xs text-slate-400">Assign membership plan and record initial payment immediately</p>
+              <p className="text-xs text-slate-400">Assign membership plan and settle payment in full at once</p>
             </div>
             <label className="flex items-center space-x-2 text-xs font-semibold cursor-pointer">
               <input
@@ -364,29 +356,21 @@ export default function AddCustomer() {
                 </div>
               </div>
 
-              {/* Fees & Payment Made */}
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+              {/* Fee & Payment Method (All Settled at Once) */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Total Fee (₹)</label>
+                  <label className="block font-semibold text-slate-700 mb-1">
+                    Membership Fee Settled in Full (₹)
+                  </label>
                   <input
                     type="number"
                     min="0"
                     required={addMembershipNow}
                     value={amount}
                     onChange={(e) => setAmount(e.target.value)}
-                    className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 font-mono text-xs font-semibold"
-                  />
-                </div>
-                <div>
-                  <label className="block font-semibold text-slate-700 mb-1">Amount Paid Today (₹)</label>
-                  <input
-                    type="number"
-                    min="0"
-                    required={addMembershipNow}
-                    value={amountPaid}
-                    onChange={(e) => setAmountPaid(e.target.value)}
                     className="w-full p-2.5 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 font-mono text-xs font-bold text-emerald-700"
                   />
+                  <p className="text-[10px] text-slate-400 mt-1">Full amount settled upfront (no partial balance)</p>
                 </div>
                 <div>
                   <label className="block font-semibold text-slate-700 mb-1">Payment Method</label>
@@ -397,8 +381,6 @@ export default function AddCustomer() {
                   >
                     <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
                     <option value="Cash">Cash</option>
-                    <option value="Debit/Credit Card">Debit / Credit Card</option>
-                    <option value="Bank Transfer">Bank Transfer (IMPS / NEFT)</option>
                     <option value="Other">Other</option>
                   </select>
                 </div>
@@ -421,6 +403,29 @@ export default function AddCustomer() {
           />
         </div>
 
+        {/* Card 5: Automatic WhatsApp Welcome Message */}
+        <div className="bg-emerald-50/70 rounded-2xl p-4 border border-emerald-200/90 shadow-sm flex items-start space-x-3">
+          <input
+            type="checkbox"
+            id="welcomeMsgCheckbox"
+            checked={sendWelcomeWhatsApp}
+            onChange={(e) => setSendWelcomeWhatsApp(e.target.checked)}
+            className="mt-0.5 w-4 h-4 text-emerald-600 rounded border-slate-300 focus:ring-emerald-500 cursor-pointer"
+          />
+          <label htmlFor="welcomeMsgCheckbox" className="cursor-pointer text-xs space-y-0.5">
+            <span className="font-bold text-emerald-950 flex items-center space-x-2">
+              <MessageSquare className="w-3.5 h-3.5 text-emerald-600" />
+              <span>Automatically send WhatsApp Welcome Message upon registration</span>
+              <span className="text-[10px] bg-emerald-200 text-emerald-900 font-extrabold px-2 py-0.5 rounded-full uppercase tracking-wider">
+                Automated
+              </span>
+            </span>
+            <p className="text-[11px] text-emerald-800">
+              Dispatches personalized welcome message, membership validity, and gym greeting automatically in the background without manual clicking.
+            </p>
+          </label>
+        </div>
+
         {/* Submit Button */}
         <div className="flex items-center justify-end space-x-3 pt-2">
           <button
@@ -440,6 +445,69 @@ export default function AddCustomer() {
           </button>
         </div>
       </form>
+
+      {/* Success & Automatic WhatsApp Welcome Modal */}
+      {registeredSuccessData && (
+        <div className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in">
+          <div 
+            className="bg-white rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 border border-slate-100 animate-in zoom-in-95 duration-200"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-14 h-14 rounded-2xl bg-emerald-500 text-slate-950 flex items-center justify-center mx-auto shadow-md shadow-emerald-500/25">
+              <Check className="w-7 h-7 stroke-[3]" />
+            </div>
+
+            <div className="text-center space-y-1">
+              <span className="text-[10px] font-extrabold text-emerald-700 uppercase tracking-wider bg-emerald-100 px-3 py-1 rounded-full border border-emerald-200 inline-flex items-center space-x-1">
+                <span>⚡ Welcome Message Sent Automatically</span>
+              </span>
+              <h3 className="font-extrabold text-slate-900 text-lg">
+                Member Registered & Welcome Sent!
+              </h3>
+              <p className="text-xs text-slate-500">
+                <strong className="text-slate-800">{registeredSuccessData.customer?.name}</strong> ({registeredSuccessData.customer?.customerId}) is registered.
+              </p>
+            </div>
+
+            {/* Recipient & Preview */}
+            <div className="bg-slate-50 rounded-2xl p-3.5 border border-slate-200/80 text-left space-y-2">
+              <div className="flex items-center justify-between text-xs border-b border-slate-200/60 pb-2">
+                <span className="text-[10px] uppercase font-bold text-slate-400">Recipient Phone</span>
+                <span className="font-mono font-bold text-emerald-700">+91 {registeredSuccessData.phone}</span>
+              </div>
+              <div className="text-[11px] text-slate-600 whitespace-pre-wrap max-h-36 overflow-y-auto font-sans leading-relaxed bg-white p-2.5 rounded-xl border border-slate-200/60">
+                {registeredSuccessData.message}
+              </div>
+              <div className="flex items-center space-x-1.5 text-[11px] text-emerald-700 font-bold pt-1">
+                <CheckCircle2 className="w-3.5 h-3.5" />
+                <span>Delivered automatically via WhatsApp background service</span>
+              </div>
+            </div>
+
+            {/* Action Buttons */}
+            <div className="space-y-2 pt-1">
+              <button
+                type="button"
+                onClick={() => navigate(`/customers/${registeredSuccessData.customer._id}`)}
+                className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-md shadow-emerald-500/25 flex items-center justify-center space-x-2 transition-all"
+              >
+                <span>View Customer Profile</span>
+                <ArrowRight className="w-4 h-4" />
+              </button>
+
+              <button
+                type="button"
+                onClick={() => window.open(registeredSuccessData.waUrl, '_blank')}
+                className="w-full py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs flex items-center justify-center space-x-1.5 transition-all"
+              >
+                <MessageSquare className="w-3.5 h-3.5" />
+                <span>Open in WhatsApp Web (Optional)</span>
+                <ExternalLink className="w-3 h-3 text-slate-400" />
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

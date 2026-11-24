@@ -1,11 +1,13 @@
 {
   "name": "fitmanage",
   "version": "1.0.0",
-  "description": "FitManage - Gym Management System: Web App & Installable PWA",
+  "description": "FitManage - Smart Gym & Fitness Studio Management",
   "type": "module",
   "scripts": {
     "dev": "node run.js",
-    "start": "node run.js",
+    "start": "node server/src/index.js",
+    "build": "npm --prefix server install && npm --prefix client install && npm --prefix client run build",
+    "render-build": "npm --prefix server install && npm --prefix client install && npm --prefix client run build",
     "server": "cd server && npm start",
     "client": "cd client && npm run dev"
   },

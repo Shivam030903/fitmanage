@@ -122,8 +122,8 @@ export default function Dashboard() {
         </div>
       </div>
 
-      {/* KPI Cards Row (7 Primary Metrics per PRD) */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-7 gap-3 sm:gap-4">
+      {/* KPI Cards Row (6 Primary Metrics) */}
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-3 xl:grid-cols-6 gap-3 sm:gap-4">
         {/* Total Members */}
         <div 
           onClick={() => navigate('/customers')}
@@ -215,23 +215,6 @@ export default function Dashboard() {
           </div>
           <p className="text-[10px] text-slate-500 mt-1">Collected today</p>
         </div>
-
-        {/* Pending Payments */}
-        <div 
-          onClick={() => navigate('/customers?paymentStatus=partial')}
-          className="bg-white p-4 rounded-2xl border border-rose-200/80 shadow-sm hover:shadow-md transition-all cursor-pointer group"
-        >
-          <div className="flex items-center justify-between text-rose-700 mb-2">
-            <span className="text-[11px] font-bold uppercase tracking-wider">Pending Dues</span>
-            <div className="p-1.5 rounded-lg bg-rose-50 group-hover:bg-rose-100">
-              <CreditCard className="w-4 h-4" />
-            </div>
-          </div>
-          <div className="text-xl sm:text-2xl font-black text-rose-600 truncate font-mono">
-            ₹{kpis.totalPending.toLocaleString('en-IN')}
-          </div>
-          <p className="text-[10px] text-slate-500 mt-1">Outstanding dues</p>
-        </div>
       </div>
 
       {/* Grid: Upcoming Expirations Table & Revenue Trends */}
@@ -308,7 +291,7 @@ export default function Dashboard() {
                             _id: item.id,
                             customerId: item.customerId,
                             name: item.name,
-                            contacts: { primary: item.phone, secondary: item.secondaryPhone, emergency: item.emergencyPhone },
+                            contacts: { primary: item.phone },
                             currentMembership: { planName: item.planName, endDate: item.expiryDate },
                             daysRemaining: item.daysRemaining,
                             outstandingBalance: item.outstandingBalance

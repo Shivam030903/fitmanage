@@ -1,0 +1,23 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Local Environment Variables
+.env
+*/.env
+.env.local
+.env.*.local
+
+# Build artifacts (will be built during Render deployment)
+dist/
+client/dist/
+
+# WhatsApp session credentials (persisted securely in MongoDB Atlas)
+baileys_auth/
+server/data/baileys_auth/
+
+# System and logs
+*.log
+npm-debug.log*
+.DS_Store
+Thumbs.db

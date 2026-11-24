@@ -12,7 +12,7 @@ router.get('/demo-users', (req, res) => {
   res.json({
     demoAccounts: [
       { role: 'Owner', email: 'owner@fitmanage.io', password: 'password123', label: 'Vikram Singhania (Owner)' },
-      { role: 'Receptionist', email: 'receptionist@fitmanage.io', password: 'password123', label: 'Pooja Sharma (Staff)' }
+      { role: 'Admin', email: 'admin@fitmanage.io', password: 'password123', label: 'Pooja Sharma (Admin)' }
     ]
   });
 });

@@ -1,6 +1,7 @@
 import express from 'express';
 import { db, calculateMembershipStatus, getDaysRemaining } from '../db.js';
 import { authMiddleware, roleCheck } from '../middleware/auth.js';
+import { whatsappService } from '../services/whatsapp.js';
 
 const router = express.Router();
 
@@ -84,8 +85,7 @@ router.get('/', (req, res) => {
       enriched = enriched.filter(c =>
         (c.name && c.name.toLowerCase().includes(query)) ||
         (c.customerId && c.customerId.toLowerCase().includes(query)) ||
-        (c.contacts?.primary && c.contacts.primary.includes(query)) ||
-        (c.contacts?.secondary && c.contacts.secondary.includes(query))
+        (c.contacts?.primary && c.contacts.primary.includes(query))
       );
     }
 
@@ -180,7 +180,7 @@ router.get('/:id', (req, res) => {
 });
 
 // POST /api/customers - Create new customer (with optional initial membership and payment)
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
   try {
     const { gymId, user } = req;
     const {
@@ -206,9 +206,7 @@ router.post('/', (req, res) => {
     const cleanPhone = (p) => p ? p.replace(/\D/g, '').slice(-10) : '';
 
     const normalizedContacts = {
-      primary: cleanPhone(contacts.primary),
-      secondary: cleanPhone(contacts.secondary),
-      emergency: cleanPhone(contacts.emergency)
+      primary: cleanPhone(contacts.primary)
     };
 
     const customerId = generateCustomerId(gymId);
@@ -232,47 +230,60 @@ router.post('/', (req, res) => {
     // If initial membership details were supplied
     if (initialPlan && initialPlan.planName && initialPlan.startDate && initialPlan.endDate) {
       const membStatus = calculateMembershipStatus(initialPlan.startDate, initialPlan.endDate);
+      const totalAmount = Number(initialPlan.amount) || 0;
+
       createdMembership = db.memberships.insertOne({
         gymId,
         customerId,
         planName: initialPlan.planName,
         startDate: initialPlan.startDate,
         endDate: initialPlan.endDate,
-        amount: Number(initialPlan.amount) || 0,
+        amount: totalAmount,
         status: membStatus,
         createdBy: user.name,
         createdAt: new Date().toISOString()
       });
 
-      // If initial payment was made
-      const amountPaid = Number(initialPlan.amountPaid) || 0;
-      const totalAmount = Number(initialPlan.amount) || 0;
-      const pendingAmount = Math.max(0, totalAmount - amountPaid);
+      // All settled at once, no partial payments
+      const validMethods = ['UPI', 'Cash', 'Other'];
+      const pMethod = validMethods.includes(initialPlan.paymentMethod) ? initialPlan.paymentMethod : 'UPI';
 
-      if (amountPaid > 0 || initialPlan.recordZeroPayment) {
-        createdPayment = db.payments.insertOne({
-          gymId,
-          customerId,
-          membershipId: createdMembership._id,
-          totalAmount,
-          amountPaid,
-          pendingAmount,
-          paymentMethod: initialPlan.paymentMethod || 'UPI',
-          paymentDate: initialPlan.startDate || new Date().toISOString().split('T')[0],
-          transactionReference: `PAY-${Date.now().toString().slice(-6)}`,
-          notes: pendingAmount > 0 ? `Initial partial payment. Remaining: ₹${pendingAmount}` : 'Initial full payment',
-          createdAt: new Date().toISOString()
-        });
-      }
+      createdPayment = db.payments.insertOne({
+        gymId,
+        customerId,
+        membershipId: createdMembership._id,
+        totalAmount,
+        amountPaid: totalAmount, // Settled in full
+        pendingAmount: 0,
+        paymentMethod: pMethod,
+        paymentDate: initialPlan.startDate || new Date().toISOString().split('T')[0],
+        transactionReference: `PAY-${Date.now().toString().slice(-6)}`,
+        notes: initialPlan.notes || 'Full upfront payment cleared',
+        createdAt: new Date().toISOString()
+      });
     }
 
     const enriched = enrichCustomer(newCustomer, gymId);
+
+    // Automatically send WhatsApp welcome message via background service
+    let whatsappResult = null;
+    try {
+      whatsappResult = await whatsappService.sendWelcomeMessage({
+        customer: enriched,
+        membership: createdMembership,
+        gymId,
+        staffName: user.name
+      });
+    } catch (waErr) {
+      console.error('Error dispatching automated WhatsApp welcome:', waErr);
+    }
 
     res.status(201).json({
       message: 'Customer registered successfully!',
       customer: enriched,
       membership: createdMembership,
-      payment: createdPayment
+      payment: createdPayment,
+      whatsappStatus: whatsappResult
     });
   } catch (err) {
     console.error('Error creating customer:', err);
@@ -303,9 +314,7 @@ router.put('/:id', (req, res) => {
     if (notes !== undefined) updateFields.notes = notes.trim();
     if (contacts) {
       updateFields.contacts = {
-        primary: cleanPhone(contacts.primary || existing.contacts?.primary),
-        secondary: cleanPhone(contacts.secondary || existing.contacts?.secondary),
-        emergency: cleanPhone(contacts.emergency || existing.contacts?.emergency)
+        primary: cleanPhone(contacts.primary || existing.contacts?.primary)
       };
     }
 

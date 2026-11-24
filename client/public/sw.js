@@ -1,45 +1,58 @@
-// FitManage Service Worker - PWA Caching & Offline support
-const CACHE_NAME = 'fitmanage-v1';
-const ASSETS_TO_CACHE = [
+// FitManage Service Worker - Network-First PWA with Instant Update Invalidation
+const CACHE_NAME = 'fitmanage-v4.0';
+const STATIC_ASSETS = [
   '/',
-  '/index.html',
   '/manifest.webmanifest',
-  '/logo.svg',
+  '/logo.svg'
 ];
 
 self.addEventListener('install', (event) => {
+  // Activate immediately without waiting for previous worker to finish
+  self.skipWaiting();
   event.waitUntil(
     caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS_TO_CACHE);
+      return cache.addAll(STATIC_ASSETS);
     })
   );
-  self.skipWaiting();
 });
 
 self.addEventListener('activate', (event) => {
+  // Clean up all old caches (v1, v2, etc.) immediately
   event.waitUntil(
     caches.keys().then((keys) => {
       return Promise.all(
         keys.map((key) => {
           if (key !== CACHE_NAME) {
+            console.log('[SW] Purging outdated cache:', key);
             return caches.delete(key);
           }
         })
       );
-    })
+    }).then(() => self.clients.claim())
   );
-  self.clients.claim();
+});
+
+// Support manual cache clear message from frontend
+self.addEventListener('message', (event) => {
+  if (event.data && event.data.action === 'skipWaiting') {
+    self.skipWaiting();
+  }
+  if (event.data && event.data.action === 'clearCache') {
+    caches.keys().then((keys) => {
+      return Promise.all(keys.map((key) => caches.delete(key)));
+    });
+  }
 });
 
 self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
 
-  // For API calls, try network first
+  // 1. Never cache API endpoints
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(
       fetch(event.request).catch(() => {
         return new Response(
-          JSON.stringify({ error: 'You are currently offline. Check network connection.' }),
+          JSON.stringify({ error: 'Offline. Please check network connection.' }),
           { status: 503, headers: { 'Content-Type': 'application/json' } }
         );
       })
@@ -47,30 +60,28 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // For navigation requests (HTML pages), try cache then network, fall back to index.html (SPA)
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request).catch(() => {
-        return caches.match('/index.html');
-      })
-    );
-    return;
-  }
-
-  // For static assets (CSS, JS, fonts, images), cache-first with network fallback
+  // 2. Network-First Strategy for HTML Navigation & Static Assets:
+  // Always fetch the freshest code from network when online.
+  // Fall back to cache only when offline.
   event.respondWith(
-    caches.match(event.request).then((cached) => {
-      if (cached) return cached;
-      return fetch(event.request).then((response) => {
-        if (!response || response.status !== 200 || response.type !== 'basic') {
-          return response;
+    fetch(event.request)
+      .then((networkResponse) => {
+        if (networkResponse && networkResponse.status === 200 && networkResponse.type === 'basic') {
+          const clone = networkResponse.clone();
+          caches.open(CACHE_NAME).then((cache) => {
+            cache.put(event.request, clone);
+          });
         }
-        const responseToCache = response.clone();
-        caches.open(CACHE_NAME).then((cache) => {
-          cache.put(event.request, responseToCache);
-        });
-        return response;
-      });
-    })
+        return networkResponse;
+      })
+      .catch(async () => {
+        // If offline, try to serve from cache
+        const cached = await caches.match(event.request);
+        if (cached) return cached;
+        if (event.request.mode === 'navigate') {
+          return caches.match('/') || caches.match('/index.html');
+        }
+        return new Response('Offline', { status: 503 });
+      })
   );
 });

@@ -1,15 +1,16 @@
 import React, { useState, useEffect } from 'react';
-import { X, Send, Copy, Check, MessageSquare, Phone, AlertTriangle } from 'lucide-react';
+import { X, Send, Copy, Check, MessageSquare, Phone, AlertTriangle, CheckCircle2, RefreshCw, ExternalLink } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { api } from '../services/api';
 
 export default function WhatsAppModal({ isOpen, onClose, customer, initialTemplate = 'expiringSoon' }) {
   const { gym } = useAuth();
-  const [selectedContact, setSelectedContact] = useState('primary');
   const [templateType, setTemplateType] = useState(initialTemplate);
   const [customText, setCustomText] = useState('');
   const [copied, setCopied] = useState(false);
-  const [logging, setLogging] = useState(false);
+  const [sending, setSending] = useState(false);
+  const [feedback, setFeedback] = useState(null);
+  const [qrStatus, setQrStatus] = useState({ isConnected: false, linkedPhone: null, loading: true });
 
   useEffect(() => {
     if (initialTemplate) {
@@ -17,17 +18,32 @@ export default function WhatsAppModal({ isOpen, onClose, customer, initialTempla
     }
   }, [initialTemplate]);
 
+  // Fetch live WhatsApp connection state whenever modal opens
+  useEffect(() => {
+    if (isOpen) {
+      setFeedback(null);
+      setSending(false);
+      api.getWhatsAppQR()
+        .then((res) => {
+          if (res) {
+            setQrStatus({
+              isConnected: Boolean(res.isConnected),
+              linkedPhone: res.linkedPhone || null,
+              loading: false
+            });
+          }
+        })
+        .catch(() => {
+          setQrStatus({ isConnected: false, linkedPhone: null, loading: false });
+        });
+    }
+  }, [isOpen]);
+
   if (!isOpen || !customer) return null;
 
   const contacts = customer.contacts || {};
   const primaryNumber = contacts.primary || '';
-  const secondaryNumber = contacts.secondary || '';
-  const emergencyNumber = contacts.emergency || '';
-
-  // Get active selected phone number
-  let targetPhone = primaryNumber;
-  if (selectedContact === 'secondary' && secondaryNumber) targetPhone = secondaryNumber;
-  if (selectedContact === 'emergency' && emergencyNumber) targetPhone = emergencyNumber;
+  const targetPhone = primaryNumber;
 
   // Compute template variables
   const customerName = customer.name || 'Valued Member';
@@ -37,14 +53,28 @@ export default function WhatsAppModal({ isOpen, onClose, customer, initialTempla
     ? new Date(customer.currentMembership.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
     : 'Upcoming';
   const daysRemaining = customer.daysRemaining !== undefined ? customer.daysRemaining : 0;
-  const pendingAmount = customer.outstandingBalance || 0;
 
-  // Build default message texts
+  // Custom gym template hydration
+  const customTemplates = gym?.settings?.whatsappTemplates || {};
+  const hydrate = (tpl, defaultFallback) => {
+    const raw = (tpl && tpl.trim()) ? tpl : defaultFallback;
+    return raw
+      .replace(/{customerName}/g, customerName)
+      .replace(/{gymName}/g, gymName)
+      .replace(/{planName}/g, planName)
+      .replace(/{expiryDate}/g, expiryDate)
+      .replace(/{daysRemaining}/g, String(daysRemaining))
+      .replace(/{customerId}/g, customer.customerId || '');
+  };
+
+  const defaultExpiringSoon = `Hello {customerName}! 👋\n\nYour gym membership at {gymName} is expiring on {expiryDate} ({daysRemaining} days left).\n\nWe would love to continue having you with us! Please contact us or visit the reception to renew your membership.\n\nThank you for being a part of our fitness family! 💪`;
+  const defaultExpired = `Hello {customerName}!\n\nYour gym membership at {gymName} has expired. We hope you enjoyed your fitness journey with us.\n\nWould you like to renew your membership? We have exciting renewal benefits waiting for you at the front desk.\n\nRegards,\n{gymName} Team 🏋️‍♂️`;
+  const defaultWelcome = `Welcome to {gymName}, {customerName}! 🎉\n\nYour {planName} membership is active until {expiryDate}.\n\nLet's smash your fitness goals! If you need any assistance with equipment or workout plans, our trainers are always here to help. 🚀`;
+
   const templates = {
-    expiringSoon: `Hello ${customerName}! 👋\n\nYour gym membership at ${gymName} is expiring on ${expiryDate} (${daysRemaining} days left).\n\nWe would love to continue having you with us! Please contact us or visit the reception to renew your membership.\n\nThank you for being a part of our fitness family! 💪`,
-    expired: `Hello ${customerName}!\n\nYour gym membership at ${gymName} has expired. We hope you enjoyed your fitness journey with us.\n\nWould you like to renew your membership? We have exciting renewal benefits waiting for you at the front desk.\n\nRegards,\n${gymName} Team 🏋️‍♂️`,
-    paymentDue: `Hello ${customerName}! 👋\n\nThis is a friendly reminder from ${gymName} regarding your pending balance of ₹${pendingAmount.toLocaleString('en-IN')} for your ${planName} membership.\n\nPlease clear this at the reception desk at your earliest convenience. Thank you! 🙏`,
-    welcome: `Welcome to ${gymName}, ${customerName}! 🎉\n\nYour ${planName} membership is active until ${expiryDate}.\n\nLet's smash your fitness goals! If you need any assistance with equipment or workout plans, our trainers are always here to help. 🚀`,
+    expiringSoon: hydrate(customTemplates.expiringSoon, defaultExpiringSoon),
+    expired: hydrate(customTemplates.expired, defaultExpired),
+    welcome: hydrate(customTemplates.welcome, defaultWelcome),
     custom: customText
   };
 
@@ -57,34 +87,86 @@ export default function WhatsAppModal({ isOpen, onClose, customer, initialTempla
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Open WhatsApp click-to-chat
+  // Dispatch directly via linked WhatsApp phone
   const handleSendWhatsApp = async () => {
     if (!targetPhone) {
       alert('Please enter or select a valid phone number.');
       return;
     }
 
-    setLogging(true);
+    setFeedback(null);
+
+    // If Direct WhatsApp is active and connected:
+    if (qrStatus.isConnected) {
+      setSending(true);
+      try {
+        const res = await api.logReminder({
+          customerId: customer.customerId,
+          membershipId: customer.currentMembership?._id || null,
+          contactNumber: targetPhone,
+          reminderType: templateType,
+          message: currentMessage,
+          sendAutomated: true
+        });
+
+        if (res.result?.status === 'DELIVERED_AUTOMATIC') {
+          setFeedback({
+            type: 'success',
+            message: `Message dispatched directly from linked phone (+${qrStatus.linkedPhone}) to +91 ${targetPhone}!`
+          });
+          setTimeout(() => {
+            onClose();
+          }, 1500);
+        } else if (res.result?.status === 'DEVICE_NOT_LINKED') {
+          setFeedback({
+            type: 'error',
+            message: 'WhatsApp device is not linked. Redirecting to WhatsApp Web...'
+          });
+          setTimeout(() => {
+            openWhatsAppWebFallback();
+          }, 1200);
+        } else {
+          setFeedback({
+            type: 'error',
+            message: res.result?.details || res.message || 'Delivery error.'
+          });
+        }
+      } catch (err) {
+        setFeedback({
+          type: 'error',
+          message: err.message || 'Failed to dispatch message directly.'
+        });
+      } finally {
+        setSending(false);
+      }
+      return;
+    }
+
+    // Direct WhatsApp not linked: fallback to web redirect
+    openWhatsAppWebFallback();
+  };
+
+  // WhatsApp Web redirect fallback
+  const openWhatsAppWebFallback = async () => {
+    setSending(true);
     try {
-      // Record reminder in backend per PRD
       await api.logReminder({
         customerId: customer.customerId,
         membershipId: customer.currentMembership?._id || null,
         contactNumber: targetPhone,
         reminderType: templateType,
-        message: currentMessage
+        message: currentMessage,
+        sendAutomated: false
       });
     } catch (e) {
-      console.error('Failed to log reminder to DB:', e);
+      console.error('Failed to log reminder:', e);
     } finally {
-      setLogging(false);
+      setSending(false);
     }
 
-    // Clean Indian 10-digit number
     const cleanNum = targetPhone.replace(/\D/g, '').slice(-10);
     const intlPhone = cleanNum.startsWith('91') ? cleanNum : `91${cleanNum}`;
     const url = `https://wa.me/${intlPhone}?text=${encodeURIComponent(currentMessage)}`;
-
     window.open(url, '_blank');
     onClose();
   };
@@ -107,7 +189,7 @@ export default function WhatsAppModal({ isOpen, onClose, customer, initialTempla
             <div>
               <h3 className="font-bold text-slate-900 text-base flex items-center space-x-2">
                 <span>WhatsApp Reminder</span>
-                <span className="text-xs font-normal text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100">
+                <span className="text-xs font-normal text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-full border border-emerald-100 font-mono">
                   {customer.customerId}
                 </span>
               </h3>
@@ -119,72 +201,31 @@ export default function WhatsAppModal({ isOpen, onClose, customer, initialTempla
           </button>
         </div>
 
-        {/* 1. Contact Selector (Primary, Secondary, Emergency) */}
-        <div className="space-y-1.5">
-          <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
-            Select Contact Number
-          </label>
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
-            {/* Primary */}
-            <button
-              type="button"
-              onClick={() => setSelectedContact('primary')}
-              disabled={!primaryNumber}
-              className={`p-2.5 rounded-xl border text-left transition-all ${
-                selectedContact === 'primary'
-                  ? 'border-emerald-500 bg-emerald-50/60 ring-2 ring-emerald-500/20'
-                  : primaryNumber ? 'border-slate-200 hover:bg-slate-50' : 'border-slate-100 bg-slate-50 opacity-40 cursor-not-allowed'
-              }`}
-            >
-              <div className="text-[11px] font-bold text-slate-900 flex items-center justify-between">
-                <span>Primary</span>
-                <Phone className="w-3 h-3 text-emerald-600" />
-              </div>
-              <div className="text-xs text-slate-600 font-mono mt-0.5 truncate">
-                {primaryNumber ? `+91 ${primaryNumber}` : 'Not provided'}
-              </div>
-            </button>
-
-            {/* Secondary */}
-            <button
-              type="button"
-              onClick={() => setSelectedContact('secondary')}
-              disabled={!secondaryNumber}
-              className={`p-2.5 rounded-xl border text-left transition-all ${
-                selectedContact === 'secondary'
-                  ? 'border-emerald-500 bg-emerald-50/60 ring-2 ring-emerald-500/20'
-                  : secondaryNumber ? 'border-slate-200 hover:bg-slate-50' : 'border-slate-100 bg-slate-50 opacity-40 cursor-not-allowed'
-              }`}
-            >
-              <div className="text-[11px] font-bold text-slate-900 flex items-center justify-between">
-                <span>Secondary</span>
-                <Phone className="w-3 h-3 text-slate-500" />
-              </div>
-              <div className="text-xs text-slate-600 font-mono mt-0.5 truncate">
-                {secondaryNumber ? `+91 ${secondaryNumber}` : 'Not provided'}
-              </div>
-            </button>
-
-            {/* Emergency */}
-            <button
-              type="button"
-              onClick={() => setSelectedContact('emergency')}
-              disabled={!emergencyNumber}
-              className={`p-2.5 rounded-xl border text-left transition-all ${
-                selectedContact === 'emergency'
-                  ? 'border-amber-500 bg-amber-50/60 ring-2 ring-amber-500/20'
-                  : emergencyNumber ? 'border-slate-200 hover:bg-slate-50' : 'border-slate-100 bg-slate-50 opacity-40 cursor-not-allowed'
-              }`}
-            >
-              <div className="text-[11px] font-bold text-amber-900 flex items-center justify-between">
-                <span>Emergency</span>
-                <AlertTriangle className="w-3 h-3 text-amber-500" />
-              </div>
-              <div className="text-xs text-slate-600 font-mono mt-0.5 truncate">
-                {emergencyNumber ? `+91 ${emergencyNumber}` : 'Not provided'}
-              </div>
-            </button>
+        {/* 1. Recipient Phone Display + Connection Status */}
+        <div className="flex items-center justify-between p-3 rounded-xl bg-emerald-50/70 border border-emerald-200/80 text-xs">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-7 h-7 rounded-lg bg-emerald-500 text-white flex items-center justify-center">
+              <Phone className="w-3.5 h-3.5" />
+            </div>
+            <div>
+              <span className="text-[10px] uppercase font-bold text-emerald-900 block leading-tight">
+                Recipient Mobile
+              </span>
+              <span className="font-mono font-bold text-slate-900 text-xs">
+                +91 {primaryNumber || 'Not provided'}
+              </span>
+            </div>
           </div>
+          {qrStatus.isConnected ? (
+            <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-full border border-emerald-300 flex items-center space-x-1.5 shadow-sm">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+              <span>Direct Link (+{qrStatus.linkedPhone})</span>
+            </span>
+          ) : (
+            <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2.5 py-1 rounded-full border border-amber-300">
+              Web Redirect (Device Unlinked)
+            </span>
+          )}
         </div>
 
         {/* 2. Template Selector */}
@@ -196,9 +237,8 @@ export default function WhatsAppModal({ isOpen, onClose, customer, initialTempla
             {[
               { id: 'expiringSoon', label: 'Expiring Soon' },
               { id: 'expired', label: 'Expired' },
-              { id: 'paymentDue', label: 'Payment Due' },
               { id: 'welcome', label: 'Welcome' },
-              { id: 'custom', label: 'Custom' }
+              { id: 'custom', label: 'Custom Message' }
             ].map((t) => (
               <button
                 key={t.id}
@@ -220,7 +260,7 @@ export default function WhatsAppModal({ isOpen, onClose, customer, initialTempla
         <div className="space-y-1.5">
           <div className="flex items-center justify-between">
             <label className="text-xs font-semibold text-slate-700 uppercase tracking-wider">
-              {templateType === 'custom' ? 'Write Message' : 'Message Preview'}
+              {templateType === 'custom' ? 'Write Custom Message' : 'Message Preview'}
             </label>
             <button
               type="button"
@@ -235,7 +275,7 @@ export default function WhatsAppModal({ isOpen, onClose, customer, initialTempla
           {templateType === 'custom' ? (
             <textarea
               rows={5}
-              placeholder="Type your WhatsApp message..."
+              placeholder="Type your custom WhatsApp message here..."
               value={customText}
               onChange={(e) => setCustomText(e.target.value)}
               className="w-full text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 font-sans"
@@ -247,29 +287,88 @@ export default function WhatsAppModal({ isOpen, onClose, customer, initialTempla
           )}
         </div>
 
-        {/* Note on Click-to-Chat */}
-        <p className="text-[11px] text-slate-500">
-          💡 Clicking <strong className="text-slate-700">Open WhatsApp</strong> will launch WhatsApp Web or App with pre-filled message. Your staff simply presses <strong className="text-slate-700">Send</strong>!
-        </p>
+        {/* Feedback Alert Banner */}
+        {feedback && (
+          <div className={`p-3 rounded-xl text-xs font-semibold flex items-center space-x-2 animate-in fade-in ${
+            feedback.type === 'success' 
+              ? 'bg-emerald-100 text-emerald-900 border border-emerald-300' 
+              : 'bg-rose-100 text-rose-900 border border-rose-300'
+          }`}>
+            {feedback.type === 'success' ? (
+              <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0" />
+            ) : (
+              <AlertTriangle className="w-4 h-4 text-rose-600 flex-shrink-0" />
+            )}
+            <span>{feedback.message}</span>
+          </div>
+        )}
+
+        {/* Direct sending or fallback notice */}
+        {qrStatus.isConnected ? (
+          <div className="text-[11px] text-emerald-800 bg-emerald-50/80 p-2.5 rounded-xl border border-emerald-200/80 flex items-start space-x-2">
+            <CheckCircle2 className="w-4 h-4 text-emerald-600 flex-shrink-0 mt-0.5" />
+            <span>
+              <strong>Direct WhatsApp Connect Active:</strong> FitManage will send this message directly from your gym's linked WhatsApp number (<strong>+{qrStatus.linkedPhone}</strong>) in the background — no browser redirect needed.
+            </span>
+          </div>
+        ) : (
+          <p className="text-[11px] text-slate-500">
+            💡 WhatsApp device is not connected. Clicking below will open WhatsApp Web. To enable 1-click background sending, scan the QR code in <a href="/settings" className="text-emerald-700 font-bold underline">Settings</a>.
+          </p>
+        )}
 
         {/* Action Buttons */}
-        <div className="pt-2 flex items-center space-x-2">
-          <button
-            type="button"
-            onClick={handleSendWhatsApp}
-            disabled={!targetPhone || logging}
-            className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/25 flex items-center justify-center space-x-2 transition-all disabled:opacity-50"
-          >
-            <Send className="w-4 h-4" />
-            <span>Open WhatsApp (+91 {targetPhone || 'None'})</span>
-          </button>
-          <button
-            type="button"
-            onClick={onClose}
-            className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs"
-          >
-            Cancel
-          </button>
+        <div className="pt-2 space-y-2">
+          <div className="flex items-center space-x-2">
+            <button
+              type="button"
+              onClick={handleSendWhatsApp}
+              disabled={!targetPhone || sending || feedback?.type === 'success'}
+              className="flex-1 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md shadow-emerald-600/25 flex items-center justify-center space-x-2 transition-all disabled:opacity-50"
+            >
+              {sending ? (
+                <>
+                  <RefreshCw className="w-4 h-4 animate-spin" />
+                  <span>Sending via +{qrStatus.linkedPhone || 'WhatsApp'}...</span>
+                </>
+              ) : feedback?.type === 'success' ? (
+                <>
+                  <Check className="w-4 h-4" />
+                  <span>Delivered Successfully!</span>
+                </>
+              ) : qrStatus.isConnected ? (
+                <>
+                  <Send className="w-4 h-4" />
+                  <span>Send Directly via WhatsApp (+91 {targetPhone || 'None'})</span>
+                </>
+              ) : (
+                <>
+                  <Send className="w-4 h-4" />
+                  <span>Open in WhatsApp Web (+91 {targetPhone || 'None'})</span>
+                </>
+              )}
+            </button>
+            <button
+              type="button"
+              onClick={onClose}
+              className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs"
+            >
+              Cancel
+            </button>
+          </div>
+
+          {qrStatus.isConnected && (
+            <div className="text-center pt-0.5">
+              <button
+                type="button"
+                onClick={openWhatsAppWebFallback}
+                className="text-[10px] text-slate-400 hover:text-slate-600 underline flex items-center justify-center space-x-1 mx-auto"
+              >
+                <span>Or open in WhatsApp Web / App</span>
+                <ExternalLink className="w-2.5 h-2.5" />
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>

@@ -45,8 +45,6 @@ export default function CustomerDetail() {
   // Edit form state
   const [editName, setEditName] = useState('');
   const [editPrimary, setEditPrimary] = useState('');
-  const [editSecondary, setEditSecondary] = useState('');
-  const [editEmergency, setEditEmergency] = useState('');
   const [editAddress, setEditAddress] = useState('');
   const [editNotes, setEditNotes] = useState('');
   const [savingEdit, setSavingEdit] = useState(false);
@@ -60,8 +58,6 @@ export default function CustomerDetail() {
       if (res.customer) {
         setEditName(res.customer.name || '');
         setEditPrimary(res.customer.contacts?.primary || '');
-        setEditSecondary(res.customer.contacts?.secondary || '');
-        setEditEmergency(res.customer.contacts?.emergency || '');
         setEditAddress(res.customer.address || '');
         setEditNotes(res.customer.notes || '');
       }
@@ -93,9 +89,7 @@ export default function CustomerDetail() {
       await api.updateCustomer(id, {
         name: editName,
         contacts: {
-          primary: editPrimary,
-          secondary: editSecondary,
-          emergency: editEmergency
+          primary: editPrimary
         },
         address: editAddress,
         notes: editNotes
@@ -201,32 +195,34 @@ export default function CustomerDetail() {
           {/* Edit Profile */}
           <button
             onClick={() => setShowEditModal(true)}
-            className="p-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 transition-colors border border-slate-200"
+            className="px-3 py-2 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors border border-slate-200 flex items-center space-x-1"
             title="Edit Customer"
           >
-            <Edit3 className="w-4 h-4" />
+            <Edit3 className="w-3.5 h-3.5" />
+            <span>Edit</span>
           </button>
 
           {/* Delete Customer */}
           <button
             onClick={() => setShowDeleteModal(true)}
-            className="p-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 transition-colors border border-rose-200"
+            className="px-3 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs transition-colors border border-rose-200 flex items-center space-x-1"
             title="Delete Customer"
           >
-            <Trash2 className="w-4 h-4" />
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Delete</span>
           </button>
         </div>
       </div>
 
       {/* Grid: 3-Tier Contacts & Current Membership KPI Box */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Contact Numbers Box (High priority: Primary, Secondary, Emergency) */}
+        {/* Contact Number Box */}
         <div className="bg-white rounded-2xl p-5 border border-slate-200/80 shadow-sm space-y-3.5">
           <div className="flex items-center justify-between border-b border-slate-100 pb-2.5">
             <h3 className="font-bold text-slate-900 text-xs uppercase tracking-wider">
-              Contact Numbers
+              Contact Details
             </h3>
-            <span className="text-[10px] text-emerald-600 font-bold uppercase">3-Tier Contacts</span>
+            <span className="text-[10px] text-emerald-600 font-bold uppercase">WhatsApp</span>
           </div>
 
           <div className="space-y-2 text-xs">
@@ -234,7 +230,7 @@ export default function CustomerDetail() {
             <div className="p-3 rounded-xl bg-emerald-50/60 border border-emerald-200/80 flex items-center justify-between">
               <div>
                 <span className="text-[10px] font-bold text-emerald-900 uppercase tracking-wider block">
-                  Primary Mobile (WhatsApp)
+                  Mobile Number (WhatsApp)
                 </span>
                 <span className="font-mono font-bold text-slate-900 text-sm mt-0.5 block">
                   +91 {customer.contacts?.primary || 'None'}
@@ -246,58 +242,11 @@ export default function CustomerDetail() {
                     setWhatsAppInitialTemplate('expiringSoon');
                     setShowWhatsAppModal(true);
                   }}
-                  className="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white"
-                  title="WhatsApp Primary Contact"
+                  className="p-1.5 rounded-lg bg-emerald-600 hover:bg-emerald-500 text-white flex items-center space-x-1"
+                  title="WhatsApp Contact"
                 >
                   <MessageSquare className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-
-            {/* Secondary Phone */}
-            <div className="p-3 rounded-xl bg-slate-50 border border-slate-200 flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-wider block">
-                  Secondary Mobile
-                </span>
-                <span className="font-mono font-semibold text-slate-800 text-xs mt-0.5 block">
-                  {customer.contacts?.secondary ? `+91 ${customer.contacts.secondary}` : 'Not provided'}
-                </span>
-              </div>
-              {customer.contacts?.secondary && (
-                <button
-                  onClick={() => {
-                    setWhatsAppInitialTemplate('expiringSoon');
-                    setShowWhatsAppModal(true);
-                  }}
-                  className="p-1.5 rounded-lg bg-slate-200 hover:bg-slate-300 text-slate-700"
-                  title="WhatsApp Secondary Contact"
-                >
-                  <MessageSquare className="w-3.5 h-3.5" />
-                </button>
-              )}
-            </div>
-
-            {/* Emergency Phone */}
-            <div className="p-3 rounded-xl bg-amber-50/50 border border-amber-200/60 flex items-center justify-between">
-              <div>
-                <span className="text-[10px] font-bold text-amber-800 uppercase tracking-wider block">
-                  Emergency Contact
-                </span>
-                <span className="font-mono font-semibold text-amber-950 text-xs mt-0.5 block">
-                  {customer.contacts?.emergency ? `+91 ${customer.contacts.emergency}` : 'Not provided'}
-                </span>
-              </div>
-              {customer.contacts?.emergency && (
-                <button
-                  onClick={() => {
-                    setWhatsAppInitialTemplate('custom');
-                    setShowWhatsAppModal(true);
-                  }}
-                  className="p-1.5 rounded-lg bg-amber-200 hover:bg-amber-300 text-amber-900"
-                  title="WhatsApp Emergency Contact"
-                >
-                  <MessageSquare className="w-3.5 h-3.5" />
+                  <span className="text-[11px] font-semibold">Chat</span>
                 </button>
               )}
             </div>
@@ -397,27 +346,14 @@ export default function CustomerDetail() {
             )}
           </div>
 
-          {/* Outstanding Balance Banner */}
+          {/* Payment Settlement Status */}
           <div className="border-t border-slate-100 pt-3 flex items-center justify-between">
             <div className="flex items-center space-x-2">
-              <span className="text-xs text-slate-600">Pending Balance:</span>
-              <span className={`font-mono font-black text-sm ${customer.outstandingBalance > 0 ? 'text-rose-600' : 'text-emerald-600'}`}>
-                {customer.outstandingBalance > 0 ? `₹${customer.outstandingBalance.toLocaleString('en-IN')} Due` : 'All Cleared (₹0)'}
+              <span className="text-xs text-slate-500">Payment Status:</span>
+              <span className="font-bold text-xs text-emerald-700 bg-emerald-50 px-2.5 py-1 rounded-full border border-emerald-200/60">
+                Settled in Full (No Pending Dues)
               </span>
             </div>
-
-            {customer.outstandingBalance > 0 && (
-              <button
-                onClick={() => {
-                  setWhatsAppInitialTemplate('paymentDue');
-                  setShowWhatsAppModal(true);
-                }}
-                className="text-xs text-amber-700 hover:underline font-bold flex items-center space-x-1"
-              >
-                <MessageSquare className="w-3.5 h-3.5" />
-                <span>Send Payment Reminder</span>
-              </button>
-            )}
           </div>
         </div>
       </div>
@@ -505,17 +441,34 @@ export default function CustomerDetail() {
                   </div>
                   <div className="flex items-center justify-between text-slate-500 text-[11px]">
                     <span>Mode: <strong className="text-slate-700">{p.paymentMethod}</strong> • {p.paymentDate}</span>
-                    {p.pendingAmount > 0 ? (
-                      <span className="text-rose-600 font-semibold">Bal: ₹{p.pendingAmount?.toLocaleString('en-IN')}</span>
-                    ) : (
-                      <span className="text-emerald-600 font-semibold">Cleared</span>
-                    )}
+                    <span className="text-emerald-600 font-semibold">Settled</span>
                   </div>
                 </div>
               ))}
             </div>
           )}
         </div>
+      </div>
+
+      {/* Danger Zone: Permanent Customer Deletion */}
+      <div className="bg-rose-50/70 border border-rose-200/90 rounded-2xl p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div>
+          <h4 className="text-sm font-bold text-rose-950 flex items-center space-x-2">
+            <AlertTriangle className="w-4 h-4 text-rose-600" />
+            <span>Danger Zone: Delete Customer Record</span>
+          </h4>
+          <p className="text-xs text-rose-700 mt-1 max-w-xl">
+            Permanently delete <strong className="font-semibold text-rose-900">{customer.name}</strong> ({customer.customerId}), along with all active/past memberships, payment receipts, and WhatsApp reminder logs. This action cannot be undone.
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={() => setShowDeleteModal(true)}
+          className="self-start sm:self-auto px-4 py-2.5 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs shadow-md shadow-rose-600/20 flex items-center space-x-2 transition-all shrink-0"
+        >
+          <Trash2 className="w-4 h-4" />
+          <span>Delete Customer Permanently</span>
+        </button>
       </div>
 
       {/* WhatsApp Modal */}
@@ -579,32 +532,12 @@ export default function CustomerDetail() {
               </div>
 
               <div>
-                <label className="block font-semibold text-slate-700 mb-1">Primary Mobile (WhatsApp)</label>
+                <label className="block font-semibold text-slate-700 mb-1">Mobile Number (WhatsApp)</label>
                 <input
                   type="tel"
                   required
                   value={editPrimary}
                   onChange={(e) => setEditPrimary(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 font-mono text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Secondary Mobile</label>
-                <input
-                  type="tel"
-                  value={editSecondary}
-                  onChange={(e) => setEditSecondary(e.target.value)}
-                  className="w-full p-2.5 rounded-xl border border-slate-200 font-mono text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="block font-semibold text-slate-700 mb-1">Emergency Contact</label>
-                <input
-                  type="tel"
-                  value={editEmergency}
-                  onChange={(e) => setEditEmergency(e.target.value)}
                   className="w-full p-2.5 rounded-xl border border-slate-200 font-mono text-xs"
                 />
               </div>

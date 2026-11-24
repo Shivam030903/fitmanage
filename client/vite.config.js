@@ -11,6 +11,6 @@ export default defineConfig({
         target: 'http://localhost:5000',
         changeOrigin: true,
       }
-    }
+    }, allowedHosts: ['enduring-goofy-wheat.ngrok-free.dev']
   }
 })

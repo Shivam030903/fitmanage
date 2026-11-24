@@ -7,12 +7,14 @@ export function authMiddleware(req, res, next) {
   try {
     let token = null;
 
-    // Check Authorization header: Bearer <token>
+    // Check Authorization header: Bearer <token>, x-auth-token, or query param
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith('Bearer ')) {
       token = authHeader.split(' ')[1];
     } else if (req.headers['x-auth-token']) {
       token = req.headers['x-auth-token'];
+    } else if (req.query && req.query.token) {
+      token = req.query.token;
     }
 
     if (!token) {

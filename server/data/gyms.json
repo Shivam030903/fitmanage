@@ -1,7 +1,7 @@
 [
   {
     "_id": "gym_fitzone_01",
-    "gymName": "Royal Gym 2.0",
+    "gymName": "SJ Fitness",
     "tagline": "Transforming Lives, Building Strength",
     "address": "near sachin medical store",
     "phone": "+91 98200 12345",
@@ -27,6 +27,62 @@
       }
     },
     "createdAt": "2026-11-18T07:55:45.466Z",
-    "updatedAt": "2026-11-18T09:21:31.298Z"
+    "updatedAt": "2026-11-24T09:10:47.289Z"
+  },
+  {
+    "_id": "gym_1795008842889",
+    "gymName": "Versha Gym & Fitness",
+    "address": "",
+    "phone": "09315069019",
+    "email": "jainveraha8@gmail.com",
+    "settings": {
+      "currency": "INR",
+      "currencySymbol": "₹",
+      "timezone": "Asia/Kolkata",
+      "expiryReminderDays": [
+        7,
+        3,
+        1,
+        0,
+        -1
+      ],
+      "allowPartialAccess": true,
+      "whatsappTemplates": {
+        "expiringSoon": "Hello {customerName}! 👋\nYour gym membership at {gymName} is expiring on {expiryDate}.\nWe would love to continue having you with us! Please contact us or visit the reception to renew.\nThank you! 💪",
+        "expired": "Hello {customerName}!\nYour gym membership at {gymName} has expired. We hope you enjoyed your fitness journey with us.\nWould you like to renew your membership? We would be happy to help you get started again.\nRegards, {gymName} Team",
+        "paymentDue": "Hello {customerName}! 👋\nFriendly reminder regarding your pending balance of ₹{pendingAmount} for your gym membership at {gymName}.\nPlease clear this at the reception desk. Thank you! 🙏",
+        "welcome": "Welcome to {gymName}, {customerName}! 🎉\nYour membership is active until {expiryDate}.\nLet's crush your fitness goals! 🚀"
+      }
+    },
+    "createdAt": "2026-11-18T13:34:02.889Z",
+    "updatedAt": "2026-11-18T13:34:02.889Z"
+  },
+  {
+    "_id": "gym_1795021748195",
+    "gymName": "iron fitness",
+    "address": "",
+    "phone": "9212151697",
+    "email": "soravjain453@gmail.com",
+    "settings": {
+      "currency": "INR",
+      "currencySymbol": "₹",
+      "timezone": "Asia/Kolkata",
+      "expiryReminderDays": [
+        7,
+        3,
+        1,
+        0,
+        -1
+      ],
+      "allowPartialAccess": true,
+      "whatsappTemplates": {
+        "expiringSoon": "Hello {customerName}! 👋\nYour gym membership at {gymName} is expiring on {expiryDate}.\nWe would love to continue having you with us! Please contact us or visit the reception to renew.\nThank you! 💪",
+        "expired": "Hello {customerName}!\nYour gym membership at {gymName} has expired. We hope you enjoyed your fitness journey with us.\nWould you like to renew your membership? We would be happy to help you get started again.\nRegards, {gymName} Team",
+        "paymentDue": "Hello {customerName}! 👋\nFriendly reminder regarding your pending balance of ₹{pendingAmount} for your gym membership at {gymName}.\nPlease clear this at the reception desk. Thank you! 🙏",
+        "welcome": "Welcome to {gymName}, {customerName}! 🎉\nYour membership is active until {expiryDate}.\nLet's crush your fitness goals! 🚀"
+      }
+    },
+    "createdAt": "2026-11-18T17:09:08.196Z",
+    "updatedAt": "2026-11-18T17:09:08.196Z"
   }
 ]

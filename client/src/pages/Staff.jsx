@@ -14,7 +14,7 @@ export default function Staff() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
-  const [role, setRole] = useState('receptionist');
+  const [role, setRole] = useState('admin');
   const [submitting, setSubmitting] = useState(false);
 
   const fetchStaff = async () => {
@@ -85,35 +85,25 @@ export default function Staff() {
         )}
       </div>
 
-      {/* Role explanation cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-xs">
+      {/* Role explanation cards (Owner and Admin only) */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-xs">
         <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-1">
           <span className="font-bold text-slate-900 flex items-center space-x-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-emerald-500" />
-            <span>Gym Owner</span>
+            <span>Gym Owner (Master Admin)</span>
           </span>
           <p className="text-slate-500 text-[11px]">
-            Unrestricted access to all data, financial revenue reports, staff permissions, and gym settings.
+            Unrestricted access to all data, financial revenue analytics, staff accounts, gym profile, and membership plan settings.
           </p>
         </div>
 
         <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-1">
           <span className="font-bold text-slate-900 flex items-center space-x-1.5">
             <span className="w-2.5 h-2.5 rounded-full bg-blue-500" />
-            <span>Admin</span>
+            <span>Gym Admin (Operations)</span>
           </span>
           <p className="text-slate-500 text-[11px]">
-            Manage member records, memberships, renewals, and collections.
-          </p>
-        </div>
-
-        <div className="p-4 rounded-2xl bg-white border border-slate-200/80 shadow-sm space-y-1">
-          <span className="font-bold text-slate-900 flex items-center space-x-1.5">
-            <span className="w-2.5 h-2.5 rounded-full bg-amber-500" />
-            <span>Receptionist</span>
-          </span>
-          <p className="text-slate-500 text-[11px]">
-            Register incoming members, check subscription status, and trigger WhatsApp renewal reminders.
+            Full operational access: register members, manage subscriptions, record payments, and send WhatsApp renewal reminders.
           </p>
         </div>
       </div>
@@ -252,8 +242,8 @@ export default function Staff() {
                   onChange={(e) => setRole(e.target.value)}
                   className="w-full p-2.5 rounded-xl border border-slate-200 text-xs font-medium"
                 >
-                  <option value="receptionist">Receptionist (Front-Desk)</option>
-                  <option value="admin">Admin (Manager)</option>
+                  <option value="admin">Admin (Full Operational Staff)</option>
+                  <option value="owner">Owner (Co-Owner)</option>
                 </select>
               </div>
 

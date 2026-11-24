@@ -9,7 +9,6 @@ export default function RenewModal({ isOpen, onClose, customer, onRenewalComplet
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
   const [amount, setAmount] = useState(2000);
-  const [amountPaid, setAmountPaid] = useState(2000);
   const [paymentMethod, setPaymentMethod] = useState('UPI');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
@@ -59,7 +58,6 @@ export default function RenewModal({ isOpen, onClose, customer, onRenewalComplet
     const planObj = plans.find(p => p.name === planName);
     if (planObj) {
       setAmount(planObj.price);
-      setAmountPaid(planObj.price); // default full payment
       calculateEndDate(startDate, planObj.durationDays);
     }
   };
@@ -81,7 +79,7 @@ export default function RenewModal({ isOpen, onClose, customer, onRenewalComplet
         startDate,
         endDate,
         amount: Number(amount),
-        amountPaid: Number(amountPaid),
+        amountPaid: Number(amount), // All settled at once
         paymentMethod,
         notes: notes.trim()
       });
@@ -181,46 +179,32 @@ export default function RenewModal({ isOpen, onClose, customer, onRenewalComplet
             </div>
           </div>
 
-          {/* Pricing & Payment Collection */}
+          {/* Pricing (Settled in full) & Payment Method */}
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <label className="block font-semibold text-slate-700 mb-1">Total Fee (₹)</label>
+              <label className="block font-semibold text-slate-700 mb-1">Renewal Fee (₹)</label>
               <input
                 type="number"
                 required
                 min="0"
                 value={amount}
                 onChange={(e) => setAmount(e.target.value)}
-                className="w-full p-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 font-mono text-xs"
-              />
-            </div>
-            <div>
-              <label className="block font-semibold text-slate-700 mb-1">Amount Paid Today (₹)</label>
-              <input
-                type="number"
-                required
-                min="0"
-                value={amountPaid}
-                onChange={(e) => setAmountPaid(e.target.value)}
                 className="w-full p-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 font-mono text-xs font-bold text-emerald-700"
               />
+              <span className="text-[10px] text-slate-400 mt-0.5 block">Settled in full upfront</span>
             </div>
-          </div>
-
-          {/* Payment Method */}
-          <div>
-            <label className="block font-semibold text-slate-700 mb-1">Payment Method</label>
-            <select
-              value={paymentMethod}
-              onChange={(e) => setPaymentMethod(e.target.value)}
-              className="w-full p-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 text-xs"
-            >
-              <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
-              <option value="Cash">Cash</option>
-              <option value="Debit/Credit Card">Debit / Credit Card</option>
-              <option value="Bank Transfer">Bank Transfer (IMPS / NEFT)</option>
-              <option value="Other">Other</option>
-            </select>
+            <div>
+              <label className="block font-semibold text-slate-700 mb-1">Payment Method</label>
+              <select
+                value={paymentMethod}
+                onChange={(e) => setPaymentMethod(e.target.value)}
+                className="w-full p-2 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 text-xs"
+              >
+                <option value="UPI">UPI (GPay / PhonePe / Paytm)</option>
+                <option value="Cash">Cash</option>
+                <option value="Other">Other</option>
+              </select>
+            </div>
           </div>
 
           {/* Notes */}

@@ -75,24 +75,24 @@ router.post('/', (req, res) => {
       createdAt: new Date().toISOString()
     });
 
-    // Record payment if specified
+    // Record payment if specified (settled in full upfront)
     let payment = null;
-    const paid = Number(amountPaid) || 0;
     const total = Number(amount) || 0;
-    const pendingAmount = Math.max(0, total - paid);
+    const validMethods = ['UPI', 'Cash', 'Other'];
+    const pMethod = validMethods.includes(paymentMethod) ? paymentMethod : 'UPI';
 
-    if (paid > 0) {
+    if (total > 0) {
       payment = db.payments.insertOne({
         gymId,
         customerId,
         membershipId: membership._id,
         totalAmount: total,
-        amountPaid: paid,
-        pendingAmount,
-        paymentMethod: paymentMethod || 'UPI',
+        amountPaid: total,
+        pendingAmount: 0,
+        paymentMethod: pMethod,
         paymentDate: startDate || new Date().toISOString().split('T')[0],
         transactionReference: `PAY-${Date.now().toString().slice(-6)}`,
-        notes: pendingAmount > 0 ? `Partial payment on creation. Pending ₹${pendingAmount}` : 'Full payment cleared',
+        notes: 'Full payment cleared upfront',
         createdAt: new Date().toISOString()
       });
     }
@@ -159,24 +159,24 @@ router.post('/:id/renew', (req, res) => {
       createdAt: new Date().toISOString()
     });
 
-    // Record payment for the renewal
+    // Record payment for the renewal (settled in full upfront)
     let payment = null;
     const total = Number(amount) || 0;
-    const paid = Number(amountPaid) || 0;
-    const pendingAmount = Math.max(0, total - paid);
+    const validMethods = ['UPI', 'Cash', 'Other'];
+    const pMethod = validMethods.includes(paymentMethod) ? paymentMethod : 'UPI';
 
-    if (paid > 0) {
+    if (total > 0) {
       payment = db.payments.insertOne({
         gymId,
         customerId,
         membershipId: renewedMembership._id,
         totalAmount: total,
-        amountPaid: paid,
-        pendingAmount,
-        paymentMethod: paymentMethod || 'UPI',
+        amountPaid: total,
+        pendingAmount: 0,
+        paymentMethod: pMethod,
         paymentDate: startDate || new Date().toISOString().split('T')[0],
         transactionReference: `PAY-${Date.now().toString().slice(-6)}`,
-        notes: pendingAmount > 0 ? `Renewal partial payment. Pending: ₹${pendingAmount}` : 'Renewal full payment',
+        notes: notes || 'Renewal payment settled in full upfront',
         createdAt: new Date().toISOString()
       });
     }

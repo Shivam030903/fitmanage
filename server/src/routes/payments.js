@@ -1,6 +1,7 @@
 import express from 'express';
 import { db } from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
+import { enrichCustomer } from './customers.js';
 
 const router = express.Router();
 router.use(authMiddleware);
@@ -9,12 +10,16 @@ router.use(authMiddleware);
 router.get('/', (req, res) => {
   try {
     const { gymId } = req;
-    const { customerId, method, startDate, endDate } = req.query;
+    const { customerId, method, startDate, endDate, month } = req.query;
 
     let payments = db.payments.find({ gymId });
 
     if (customerId) {
       payments = payments.filter(p => p.customerId === customerId);
+    }
+
+    if (month && month !== 'all') {
+      payments = payments.filter(p => (p.paymentDate && p.paymentDate.startsWith(month)) || (p.createdAt && p.createdAt.startsWith(month)));
     }
 
     if (method && method !== 'all') {
@@ -32,12 +37,18 @@ router.get('/', (req, res) => {
     // Populate customer and membership plan
     const populated = payments.map(p => {
       const customer = db.customers.findOne({ gymId, customerId: p.customerId });
-      const membership = db.memberships.findById(p.membershipId);
+      const membership = p.membershipId ? db.memberships.findById(p.membershipId) : null;
+      const enriched = customer ? enrichCustomer(customer, gymId) : null;
+
+      // Use the customer's current actual pending dues so cleared dues are immediately shown
+      const currentPending = enriched ? enriched.outstandingBalance : (Number(p.pendingAmount) || 0);
 
       return {
         ...p,
+        pendingAmount: currentPending,
         customerName: customer ? customer.name : 'Unknown',
         customerPhone: customer?.contacts?.primary || '',
+        customerContacts: customer?.contacts || {},
         planName: membership ? membership.planName : 'General / Add-on'
       };
     });
@@ -45,9 +56,15 @@ router.get('/', (req, res) => {
     // Sort descending by payment date
     populated.sort((a, b) => new Date(b.paymentDate) - new Date(a.paymentDate));
 
-    // Calculate totals
+    // Calculate totals accurately across gym
     const totalCollected = populated.reduce((sum, p) => sum + (Number(p.amountPaid) || 0), 0);
-    const totalPending = populated.reduce((sum, p) => sum + (Number(p.pendingAmount) || 0), 0);
+    
+    // Gym total pending balance from all customers' current actual balances
+    const allCustomers = db.customers.find({ gymId });
+    const totalPending = allCustomers.reduce((sum, c) => {
+      const enriched = enrichCustomer(c, gymId);
+      return sum + (Number(enriched.outstandingBalance) || 0);
+    }, 0);
 
     res.json({
       payments: populated,
@@ -61,7 +78,7 @@ router.get('/', (req, res) => {
   }
 });
 
-// POST /api/payments - Record new payment (full or partial)
+// POST /api/payments - Record new payment (all settled at once)
 router.post('/', (req, res) => {
   try {
     const { gymId, user } = req;
@@ -77,29 +94,37 @@ router.post('/', (req, res) => {
     }
 
     const paid = Number(amountPaid);
-    const total = totalAmount ? Number(totalAmount) : paid;
-    const pendingAmount = Math.max(0, total - paid);
+    const validMethods = ['UPI', 'Cash', 'Other'];
+    const pMethod = validMethods.includes(paymentMethod) ? paymentMethod : 'UPI';
 
     const txRef = `PAY-${Date.now().toString().slice(-6)}`;
 
+    // All settled at once, zero pending balance
     const newPayment = db.payments.insertOne({
       gymId,
       customerId,
       membershipId: membershipId || null,
-      totalAmount: total,
+      totalAmount: paid,
       amountPaid: paid,
-      pendingAmount,
-      paymentMethod: paymentMethod || 'UPI',
+      pendingAmount: 0,
+      paymentMethod: pMethod,
       paymentDate: paymentDate || new Date().toISOString().split('T')[0],
       transactionReference: txRef,
-      notes: notes || '',
+      notes: notes || 'Full payment settled at once',
       receivedBy: user.name,
       createdAt: new Date().toISOString()
     });
 
+    // Mark any previous payments for this customer as cleared
+    const allPriorPayments = db.payments.find({ gymId, customerId });
+    allPriorPayments.forEach(prev => {
+      db.payments.updateOne({ _id: prev._id }, { pendingAmount: 0 });
+    });
+
     res.status(201).json({
-      message: `Payment of ₹${paid.toLocaleString('en-IN')} recorded successfully.`,
-      payment: newPayment
+      message: `Payment of ₹${paid.toLocaleString('en-IN')} recorded and settled in full.`,
+      payment: newPayment,
+      outstandingBalance: 0
     });
   } catch (err) {
     console.error('Error recording payment:', err);
@@ -121,6 +146,8 @@ router.get('/:id/receipt', (req, res) => {
     const customer = db.customers.findOne({ gymId, customerId: payment.customerId });
     const gym = db.gyms.findById(gymId);
     const membership = payment.membershipId ? db.memberships.findById(payment.membershipId) : null;
+    const enrichedCust = customer ? enrichCustomer(customer, gymId) : null;
+    const currentPending = enrichedCust ? enrichedCust.outstandingBalance : (Number(payment.pendingAmount) || 0);
 
     res.json({
       receiptNumber: payment.transactionReference,
@@ -146,7 +173,7 @@ router.get('/:id/receipt', (req, res) => {
       payment: {
         totalAmount: payment.totalAmount,
         amountPaid: payment.amountPaid,
-        pendingAmount: payment.pendingAmount,
+        pendingAmount: currentPending,
         paymentMethod: payment.paymentMethod,
         notes: payment.notes,
         receivedBy: payment.receivedBy || 'Staff'

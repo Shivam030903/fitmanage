@@ -81,7 +81,10 @@ export const api = {
   logReminder: (data) => request('/reminders', { method: 'POST', body: JSON.stringify(data) }),
 
   // Reports
-  getAnalytics: () => request('/reports/analytics'),
+  getAnalytics: (params = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return request(`/reports/analytics${query ? '?' + query : ''}`);
+  },
 
   // Staff
   getStaff: () => request('/staff'),
@@ -91,7 +94,29 @@ export const api = {
   // Settings
   getSettings: () => request('/settings'),
   updateGymProfile: (data) => request('/settings/profile', { method: 'PUT', body: JSON.stringify(data) }),
+  testWhatsAppGateway: (data) => request('/settings/test-whatsapp', { method: 'POST', body: JSON.stringify(data) }),
+  getWhatsAppQR: () => request('/settings/whatsapp-qr'),
+  reconnectWhatsAppQR: () => request('/settings/whatsapp-qr/reconnect', { method: 'POST' }),
+  disconnectWhatsAppQR: () => request('/settings/whatsapp-qr/disconnect', { method: 'POST' }),
   addPlan: (data) => request('/settings/plans', { method: 'POST', body: JSON.stringify(data) }),
   updatePlan: (id, data) => request(`/settings/plans/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   deletePlan: (id) => request(`/settings/plans/${id}`, { method: 'DELETE' }),
+  scanMultiStageExpiry: () => request('/reminders/scan-multi-stage', { method: 'POST' }),
+  getMultiStageConfig: () => request('/reminders/multi-stage-config'),
+
+  // Member Self-Service Portal
+  portalSendOtp: (phone) => request('/portal/send-otp', { method: 'POST', body: JSON.stringify({ phone }) }),
+  portalVerifyOtp: (phone, otp) => request('/portal/verify-otp', { method: 'POST', body: JSON.stringify({ phone, otp }) }),
+  portalGetMe: (token) => {
+    return fetch('/api/portal/me', {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      }
+    }).then(async (res) => {
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to load member portal.');
+      return data;
+    });
+  },
 };

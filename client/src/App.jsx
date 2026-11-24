@@ -18,10 +18,27 @@ import Reminders from './pages/Reminders';
 import Reports from './pages/Reports';
 import Staff from './pages/Staff';
 import Settings from './pages/Settings';
+import Portal from './pages/Portal';
 
 function ProtectedLayout({ children, title }) {
   const { user, loading } = useAuth();
   const [showPwaModal, setShowPwaModal] = useState(false);
+
+  const handleInstallClick = async () => {
+    if (window.deferredPWAEvent) {
+      try {
+        window.deferredPWAEvent.prompt();
+        const choice = await window.deferredPWAEvent.userChoice;
+        if (choice && choice.outcome === 'accepted') {
+          window.deferredPWAEvent = null;
+          return;
+        }
+      } catch (err) {
+        console.error('Install prompt error:', err);
+      }
+    }
+    setShowPwaModal(true);
+  };
 
   if (loading) {
     return (
@@ -48,7 +65,7 @@ function ProtectedLayout({ children, title }) {
         {/* Top Header */}
         <Header 
           title={title} 
-          onInstallClick={() => setShowPwaModal(true)} 
+          onInstallClick={handleInstallClick} 
         />
 
         {/* Workspace Canvas (Light SaaS theme) */}
@@ -136,6 +153,7 @@ export default function App() {
             </ProtectedLayout>
           } />
 
+          <Route path="/portal" element={<Portal />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </BrowserRouter>

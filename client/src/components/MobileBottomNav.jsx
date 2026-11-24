@@ -1,11 +1,49 @@
 import React, { useState } from 'react';
-import { NavLink } from 'react-router-dom';
-import { LayoutDashboard, Users, PlusCircle, CreditCard, MoreHorizontal, MessageSquare, BarChart3, Settings, ShieldCheck } from 'lucide-react';
+import { NavLink, useNavigate } from 'react-router-dom';
+import { 
+  LayoutDashboard, 
+  Users, 
+  PlusCircle, 
+  CreditCard, 
+  MoreHorizontal, 
+  MessageSquare, 
+  BarChart3, 
+  Settings, 
+  ShieldCheck,
+  LogOut,
+  RefreshCw
+} from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function MobileBottomNav() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const navigate = useNavigate();
+
+  const handleLogout = () => {
+    setShowMoreMenu(false);
+    logout();
+    navigate('/login');
+  };
+
+  const handleClearCacheAndReload = async () => {
+    setShowMoreMenu(false);
+    try {
+      if ('caches' in window) {
+        const names = await caches.keys();
+        await Promise.all(names.map((name) => caches.delete(name)));
+      }
+      if ('serviceWorker' in navigator) {
+        const registrations = await navigator.serviceWorker.getRegistrations();
+        for (let reg of registrations) {
+          await reg.unregister();
+        }
+      }
+    } catch (err) {
+      console.warn('Error clearing cache:', err);
+    }
+    window.location.reload(true);
+  };
 
   return (
     <>
@@ -16,11 +54,16 @@ export default function MobileBottomNav() {
           onClick={() => setShowMoreMenu(false)}
         >
           <div 
-            className="bg-white rounded-t-3xl p-5 shadow-2xl border-t border-slate-200 space-y-3 animate-in slide-in-from-bottom duration-200"
+            className="bg-white rounded-t-3xl p-5 shadow-2xl border-t border-slate-200 space-y-4 animate-in slide-in-from-bottom duration-200"
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto mb-2" />
-            <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400 px-2">More Options</h3>
+            <div className="w-12 h-1 bg-slate-200 rounded-full mx-auto" />
+            
+            <div className="flex items-center justify-between px-1">
+              <h3 className="text-xs font-bold uppercase tracking-wider text-slate-400">Navigation & Operations</h3>
+              <span className="text-[10px] bg-slate-100 text-slate-600 px-2 py-0.5 rounded-full font-mono font-medium">FitManage</span>
+            </div>
+
             <div className="grid grid-cols-2 gap-2">
               <NavLink
                 to="/reminders"
@@ -67,6 +110,38 @@ export default function MobileBottomNav() {
                 </div>
                 <span>Gym Settings</span>
               </NavLink>
+
+              <button
+                type="button"
+                onClick={handleClearCacheAndReload}
+                className="col-span-2 flex items-center justify-center space-x-2 p-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-600 font-semibold text-xs transition-colors"
+                title="Force refresh app and clear cached files"
+              >
+                <RefreshCw className="w-3.5 h-3.5 text-slate-500" />
+                <span>Reload App & Clear Cache</span>
+              </button>
+            </div>
+
+            {/* User Profile & Mobile Logout Action */}
+            <div className="pt-3 border-t border-slate-100 flex items-center justify-between">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-9 h-9 rounded-full bg-slate-900 text-emerald-400 font-bold flex items-center justify-center text-xs uppercase shadow-sm">
+                  {user?.name?.charAt(0) || 'U'}
+                </div>
+                <div>
+                  <p className="text-xs font-bold text-slate-900 leading-tight">{user?.name}</p>
+                  <p className="text-[10px] text-emerald-600 capitalize font-medium">{user?.role} Account</p>
+                </div>
+              </div>
+              
+              <button
+                type="button"
+                onClick={handleLogout}
+                className="px-4 py-2 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-600 font-bold text-xs flex items-center space-x-1.5 transition-colors border border-rose-200"
+              >
+                <LogOut className="w-3.5 h-3.5" />
+                <span>Log Out</span>
+              </button>
             </div>
           </div>
         </div>

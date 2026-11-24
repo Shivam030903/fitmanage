@@ -55,14 +55,102 @@
     "updatedAt": "2026-11-18T07:55:45.491Z"
   },
   {
+    "_id": "id_1794993719047_uqll6s",
     "gymId": "gym_fitzone_01",
     "name": "Couple",
     "durationDays": 30,
     "price": 3000,
     "description": "",
     "active": true,
-    "_id": "id_1794993719047_uqll6s",
     "createdAt": "2026-11-18T09:21:59.047Z",
     "updatedAt": "2026-11-18T09:21:59.047Z"
+  },
+  {
+    "_id": "id_1795008842891_k8jp2i",
+    "gymId": "gym_1795008842889",
+    "name": "Monthly Standard",
+    "durationDays": 30,
+    "price": 1500,
+    "description": "30 days gym access",
+    "active": true,
+    "createdAt": "2026-11-18T13:34:02.891Z",
+    "updatedAt": "2026-11-18T13:34:02.891Z"
+  },
+  {
+    "_id": "id_1795008842895_9fi76l",
+    "gymId": "gym_1795008842889",
+    "name": "Quarterly",
+    "durationDays": 90,
+    "price": 4000,
+    "description": "90 days access",
+    "active": true,
+    "createdAt": "2026-11-18T13:34:02.895Z",
+    "updatedAt": "2026-11-18T13:34:02.895Z"
+  },
+  {
+    "_id": "id_1795008842897_n42k56",
+    "gymId": "gym_1795008842889",
+    "name": "Half-Yearly",
+    "durationDays": 180,
+    "price": 7500,
+    "description": "180 days access",
+    "active": true,
+    "createdAt": "2026-11-18T13:34:02.897Z",
+    "updatedAt": "2026-11-18T13:34:02.897Z"
+  },
+  {
+    "_id": "id_1795008842946_39mfbj",
+    "gymId": "gym_1795008842889",
+    "name": "Yearly VIP",
+    "durationDays": 365,
+    "price": 13000,
+    "description": "1 year all inclusive",
+    "active": true,
+    "createdAt": "2026-11-18T13:34:02.946Z",
+    "updatedAt": "2026-11-18T13:34:02.946Z"
+  },
+  {
+    "_id": "id_1795021748198_u64a1d",
+    "gymId": "gym_1795021748195",
+    "name": "Monthly Standard",
+    "durationDays": 30,
+    "price": 1500,
+    "description": "30 days gym access",
+    "active": true,
+    "createdAt": "2026-11-18T17:09:08.198Z",
+    "updatedAt": "2026-11-18T17:09:08.198Z"
+  },
+  {
+    "_id": "id_1795021748200_xrqoiu",
+    "gymId": "gym_1795021748195",
+    "name": "Quarterly",
+    "durationDays": 90,
+    "price": 4000,
+    "description": "90 days access",
+    "active": true,
+    "createdAt": "2026-11-18T17:09:08.200Z",
+    "updatedAt": "2026-11-18T17:09:08.200Z"
+  },
+  {
+    "_id": "id_1795021748201_3n36v5",
+    "gymId": "gym_1795021748195",
+    "name": "Half-Yearly",
+    "durationDays": 180,
+    "price": 7500,
+    "description": "180 days access",
+    "active": true,
+    "createdAt": "2026-11-18T17:09:08.201Z",
+    "updatedAt": "2026-11-18T17:09:08.201Z"
+  },
+  {
+    "_id": "id_1795021748202_82xmmo",
+    "gymId": "gym_1795021748195",
+    "name": "Yearly VIP",
+    "durationDays": 365,
+    "price": 13000,
+    "description": "1 year all inclusive",
+    "active": true,
+    "createdAt": "2026-11-18T17:09:08.202Z",
+    "updatedAt": "2026-11-18T17:09:08.202Z"
   }
 ]

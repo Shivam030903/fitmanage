@@ -2,6 +2,9 @@ import express from 'express';
 import { db, calculateMembershipStatus, getDaysRemaining } from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
 import { enrichCustomer } from './customers.js';
+import { whatsappService } from '../services/whatsapp.js';
+
+import { expiryScheduler, DEFAULT_STAGE_CONFIG } from '../services/expiryScheduler.js';
 
 const router = express.Router();
 router.use(authMiddleware);
@@ -45,8 +48,6 @@ router.get('/', (req, res) => {
           daysRemaining: daysLeft,
           expiryDate: memb?.endDate,
           primaryPhone: customer.contacts?.primary,
-          secondaryPhone: customer.contacts?.secondary,
-          emergencyPhone: customer.contacts?.emergency,
           recommendedTemplate: 'expiringSoon'
         });
       }
@@ -63,8 +64,6 @@ router.get('/', (req, res) => {
           daysRemaining: 0,
           expiryDate: memb?.endDate,
           primaryPhone: customer.contacts?.primary,
-          secondaryPhone: customer.contacts?.secondary,
-          emergencyPhone: customer.contacts?.emergency,
           recommendedTemplate: 'expiringSoon'
         });
       }
@@ -82,27 +81,7 @@ router.get('/', (req, res) => {
           daysRemaining: daysLeft,
           expiryDate: memb?.endDate,
           primaryPhone: customer.contacts?.primary,
-          secondaryPhone: customer.contacts?.secondary,
-          emergencyPhone: customer.contacts?.emergency,
           recommendedTemplate: 'expired'
-        });
-      }
-
-      // 4. Pending Payment Reminder
-      if (customer.outstandingBalance > 0) {
-        reminderQueue.push({
-          id: `rem_pay_${customer.customerId}`,
-          type: 'pending_payment',
-          urgency: 'medium',
-          triggerLabel: `Pending ₹${customer.outstandingBalance.toLocaleString('en-IN')}`,
-          customer,
-          membership: memb,
-          pendingAmount: customer.outstandingBalance,
-          expiryDate: memb?.endDate,
-          primaryPhone: customer.contacts?.primary,
-          secondaryPhone: customer.contacts?.secondary,
-          emergencyPhone: customer.contacts?.emergency,
-          recommendedTemplate: 'paymentDue'
         });
       }
     });
@@ -150,14 +129,30 @@ router.get('/', (req, res) => {
   }
 });
 
-// POST /api/reminders - Log reminder initiation
-router.post('/', (req, res) => {
+// POST /api/reminders - Log reminder initiation or dispatch automated WhatsApp
+router.post('/', async (req, res) => {
   try {
     const { gymId, user } = req;
-    const { customerId, membershipId, contactNumber, reminderType, message } = req.body;
+    const { customerId, membershipId, contactNumber, reminderType, message, sendAutomated } = req.body;
 
     if (!customerId || !contactNumber) {
       return res.status(400).json({ error: 'Customer ID and contact number are required.' });
+    }
+
+    if (sendAutomated) {
+      const waResult = await whatsappService.sendAutomatedWhatsApp({
+        gymId,
+        customerId,
+        membershipId: membershipId || null,
+        contactNumber,
+        reminderType: reminderType || 'custom',
+        message: message || '',
+        staffName: user.name
+      });
+      return res.status(201).json({
+        message: 'Reminder sent automatically via WhatsApp gateway.',
+        result: waResult
+      });
     }
 
     const logEntry = db.reminderLogs.insertOne({
@@ -179,6 +174,33 @@ router.post('/', (req, res) => {
   } catch (err) {
     console.error('Error logging reminder:', err);
     res.status(500).json({ error: 'Failed to log reminder.' });
+  }
+});
+
+// POST /api/reminders/scan-multi-stage - Trigger automated multi-stage scan now
+router.post('/scan-multi-stage', async (req, res) => {
+  try {
+    const { gymId } = req;
+    const result = await expiryScheduler.runExpiryScan(gymId);
+    res.json({
+      message: 'Automated multi-stage expiry scan completed.',
+      result
+    });
+  } catch (err) {
+    console.error('Multi-stage scan error:', err);
+    res.status(500).json({ error: 'Failed to run multi-stage scan: ' + err.message });
+  }
+});
+
+// GET /api/reminders/multi-stage-config - Retrieve gym multi-stage expiry configuration
+router.get('/multi-stage-config', (req, res) => {
+  try {
+    const { gymId } = req;
+    const gym = db.gyms.findById(gymId);
+    const config = gym?.settings?.multiStageExpiry || DEFAULT_STAGE_CONFIG;
+    res.json({ config });
+  } catch (err) {
+    res.status(500).json({ error: 'Failed to retrieve multi-stage config.' });
   }
 });
 
