@@ -95,6 +95,7 @@ export const api = {
   getSettings: () => request('/settings'),
   updateGymProfile: (data) => request('/settings/profile', { method: 'PUT', body: JSON.stringify(data) }),
   testWhatsAppGateway: (data) => request('/settings/test-whatsapp', { method: 'POST', body: JSON.stringify(data) }),
+  testMetaCloudAPI: (data) => request('/settings/test-meta', { method: 'POST', body: JSON.stringify(data) }),
   getWhatsAppQR: () => request('/settings/whatsapp-qr'),
   reconnectWhatsAppQR: () => request('/settings/whatsapp-qr/reconnect', { method: 'POST' }),
   disconnectWhatsAppQR: () => request('/settings/whatsapp-qr/disconnect', { method: 'POST' }),

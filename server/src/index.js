@@ -79,7 +79,7 @@ if (fs.existsSync(clientDistPath)) {
 async function startServer() {
   await connectMongoDB();
   await seedInitialData();
-  whatsappWebService.init().catch(e => console.error('WhatsApp Web init error:', e));
+  whatsappWebService.initAll().catch(e => console.error('WhatsApp Web init error:', e));
   expiryScheduler.start();
   app.listen(PORT, '0.0.0.0', () => {
     console.log(`===============================================`);

@@ -48,8 +48,7 @@ export const expiryScheduler = {
    * Run multi-stage scan across all gyms or a specific gym
    */
   async runExpiryScan(targetGymId = null) {
-    const isConnected = whatsappWebService.getStatus().isConnected;
-    console.log(`[Expiry Scheduler] Starting scan (WhatsApp paired: ${isConnected})...`);
+    console.log(`[Expiry Scheduler] Starting automated multi-stage expiry scan across gyms...`);
 
     const gyms = targetGymId 
       ? [db.gyms.findById(targetGymId)].filter(Boolean)
@@ -67,6 +66,22 @@ export const expiryScheduler = {
       const config = gym.settings?.multiStageExpiry || DEFAULT_STAGE_CONFIG;
       if (config.enabled === false) {
         summary.details.push({ gymId: gym._id, gymName: gym.gymName, skipped: true, reason: 'Automation disabled in settings' });
+        continue;
+      }
+
+      const waSettings = gym.settings?.whatsapp || {};
+      const provider = waSettings.provider || 'whatsapp_qr';
+      const isReady = provider === 'meta'
+        ? Boolean(waSettings.meta?.phoneNumberId && waSettings.meta?.accessToken)
+        : whatsappWebService.getStatus(gym._id).isConnected;
+
+      if (!isReady) {
+        summary.details.push({ 
+          gymId: gym._id, 
+          gymName: gym.gymName, 
+          skipped: true, 
+          reason: `WhatsApp not connected (${provider === 'meta' ? 'Meta Cloud API credentials missing' : 'QR device not linked'})` 
+        });
         continue;
       }
 

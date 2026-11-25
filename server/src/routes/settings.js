@@ -70,7 +70,11 @@ router.put('/profile', roleCheck(['owner', 'admin']), (req, res) => {
           ...settings,
           whatsapp: {
             ...(existing.settings?.whatsapp || {}),
-            ...(settings?.whatsapp || {})
+            ...(settings?.whatsapp || {}),
+            meta: {
+              ...(existing.settings?.whatsapp?.meta || {}),
+              ...(settings?.whatsapp?.meta || {})
+            }
           },
           whatsappTemplates: {
             ...(existing.settings?.whatsappTemplates || {}),
@@ -185,21 +189,53 @@ router.post('/test-whatsapp', roleCheck(['owner', 'admin']), async (req, res) =>
   }
 });
 
-// GET /api/settings/whatsapp-qr - Get WhatsApp Web QR connection status
+// GET /api/settings/whatsapp-qr - Get WhatsApp Web QR connection status for this specific gym
 router.get('/whatsapp-qr', (req, res) => {
-  res.json(whatsappWebService.getStatus());
+  const { gymId } = req;
+  res.json(whatsappWebService.getStatus(gymId));
 });
 
-// POST /api/settings/whatsapp-qr/reconnect - Refresh QR code
+// POST /api/settings/whatsapp-qr/reconnect - Refresh QR code for this specific gym
 router.post('/whatsapp-qr/reconnect', (req, res) => {
-  whatsappWebService.init();
-  res.json(whatsappWebService.getStatus());
+  const { gymId } = req;
+  whatsappWebService.init(gymId);
+  res.json(whatsappWebService.getStatus(gymId));
 });
 
-// POST /api/settings/whatsapp-qr/disconnect - Disconnect linked WhatsApp device
+// POST /api/settings/whatsapp-qr/disconnect - Disconnect linked WhatsApp device for this specific gym
 router.post('/whatsapp-qr/disconnect', async (req, res) => {
-  const result = await whatsappWebService.logout();
+  const { gymId } = req;
+  const result = await whatsappWebService.logout(gymId);
   res.json(result);
+});
+
+// POST /api/settings/test-meta - Verify Meta WhatsApp Cloud API credentials
+router.post('/test-meta', roleCheck(['owner', 'admin']), async (req, res) => {
+  try {
+    const { gymId, user } = req;
+    const { phoneNumberId, accessToken, testPhone } = req.body;
+
+    if (!phoneNumberId || !accessToken) {
+      return res.status(400).json({ error: 'Meta Phone Number ID and Access Token are required.' });
+    }
+    if (!testPhone) {
+      return res.status(400).json({ error: 'Test recipient phone number is required.' });
+    }
+
+    const testMsg = `🚀 *FitManage Meta WhatsApp Cloud API Test*\n\nYour Meta Business Cloud API configuration is valid and active!\n\nVerified by: ${user.name}\nTime: ${new Date().toLocaleTimeString('en-IN')}`;
+
+    const result = await whatsappService.sendMetaWhatsApp({
+      phoneNumberId,
+      accessToken,
+      toPhone: testPhone,
+      message: testMsg
+    });
+
+    res.json({ message: 'Meta Cloud API test message sent successfully!', result });
+  } catch (err) {
+    console.error('Test Meta Error:', err);
+    res.status(400).json({ error: err.message });
+  }
 });
 
 // GET /api/settings/broadcast-preview - Count & sample recipients
@@ -233,26 +269,36 @@ router.get('/broadcast-preview', (req, res) => {
   }
 });
 
-// POST /api/settings/broadcast - Dispatch broadcast to all selected members via linked WhatsApp
+// POST /api/settings/broadcast - Dispatch broadcast to all selected members via configured gateway
 router.post('/broadcast', roleCheck(['owner', 'admin']), async (req, res) => {
   try {
-    const { gymId } = req;
+    const { gymId, user } = req;
     const { target = 'all', message } = req.body;
 
     if (!message || !message.trim()) {
       return res.status(400).json({ error: 'Broadcast message content cannot be empty.' });
     }
 
-    const qrStatus = whatsappWebService.getStatus();
-    if (!qrStatus.isConnected) {
-      return res.status(400).json({ 
-        error: 'WhatsApp device is not linked. Please scan the QR code in Settings to connect your gym WhatsApp number first.' 
-      });
+    const gym = db.gyms.findById(gymId) || { gymName: 'FitManage Gym' };
+    const waSettings = gym?.settings?.whatsapp || {};
+    const provider = waSettings.provider || 'whatsapp_qr';
+
+    if (provider === 'meta') {
+      if (!waSettings.meta?.phoneNumberId || !waSettings.meta?.accessToken) {
+        return res.status(400).json({ 
+          error: 'Meta Cloud API is selected as your WhatsApp provider, but Phone Number ID or Access Token is missing in Settings.' 
+        });
+      }
+    } else {
+      const qrStatus = whatsappWebService.getStatus(gymId);
+      if (!qrStatus.isConnected) {
+        return res.status(400).json({ 
+          error: `WhatsApp device is not linked for ${gym.gymName}. Please scan the QR code in Settings to connect your gym WhatsApp number first.` 
+        });
+      }
     }
 
-    const gym = db.gyms.findById(gymId) || { gymName: 'FitManage Gym' };
     const customersWithStatus = getCustomersWithStatus(gymId);
-
     const recipients = customersWithStatus.filter(c => {
       const phone = (c.contacts?.primary || '').replace(/\D/g, '').slice(-10);
       if (!phone || phone.length !== 10) return false;
@@ -279,31 +325,31 @@ router.post('/broadcast', roleCheck(['owner', 'admin']), async (req, res) => {
       // Variable interpolation
       const personalizedMsg = message
         .replace(/{name}/gi, member.name)
+        .replace(/{customerName}/gi, member.name)
         .replace(/{gymName}/gi, gym.gymName)
         .replace(/{daysRemaining}/gi, days.toString())
         .replace(/{planName}/gi, planName)
         .replace(/{endDate}/gi, endDate);
 
       try {
-        await whatsappWebService.sendMessage(cleanPhone, personalizedMsg);
-        dispatched++;
-        
-        // Log reminder in db
-        db.reminderLogs.insertOne({
+        const sendRes = await whatsappService.sendAutomatedWhatsApp({
           gymId,
           customerId: member.customerId,
-          customerName: member.name,
-          phone: cleanPhone,
-          channel: 'whatsapp_web',
-          type: 'broadcast',
-          stage: target,
-          dispatchedAt: new Date().toISOString(),
-          status: 'sent',
-          message: personalizedMsg
+          contactNumber: cleanPhone,
+          message: personalizedMsg,
+          reminderType: 'broadcast',
+          staffName: user.name
         });
 
-        // Delay 400ms between sends to avoid WhatsApp socket backpressure
-        await new Promise(r => setTimeout(r, 400));
+        if (sendRes.success) {
+          dispatched++;
+        } else {
+          failed++;
+          errors.push({ name: member.name, phone: cleanPhone, error: sendRes.details });
+        }
+
+        // Delay 300ms between sends to avoid socket or API flooding
+        await new Promise(r => setTimeout(r, 300));
       } catch (sendErr) {
         failed++;
         errors.push({ name: member.name, phone: cleanPhone, error: sendErr.message });

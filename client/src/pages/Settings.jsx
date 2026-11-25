@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Dumbbell, MessageSquare, Plus, Trash2, CheckCircle2, Zap, QrCode, Smartphone, RefreshCw, Clock, Radio, Megaphone, Users, Activity, BarChart2, Calendar, AlertCircle, Send, Edit2 } from 'lucide-react';
+import { Settings as SettingsIcon, Dumbbell, MessageSquare, Plus, Trash2, CheckCircle2, Zap, QrCode, Smartphone, RefreshCw, Clock, Radio, Megaphone, Users, Activity, BarChart2, Calendar, AlertCircle, Send, Edit2, Cloud, ShieldCheck, Key, Globe } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -41,9 +41,18 @@ export default function Settings() {
   const [testingGateway, setTestingGateway] = useState(false);
   const [testResult, setTestResult] = useState(null);
 
-  // WhatsApp QR Linking (Option 3)
+  // WhatsApp QR Linking (Dedicated per Gym)
   const [qrData, setQrData] = useState({ status: 'disconnected', isConnected: false, qrCode: null, linkedPhone: null });
   const [qrRefreshing, setQrRefreshing] = useState(false);
+
+  // Meta WhatsApp Cloud API State
+  const [waProvider, setWaProvider] = useState('whatsapp_qr'); // 'whatsapp_qr' | 'meta'
+  const [metaPhoneId, setMetaPhoneId] = useState('');
+  const [metaAccessToken, setMetaAccessToken] = useState('');
+  const [metaWabaId, setMetaWabaId] = useState('');
+  const [testingMeta, setTestingMeta] = useState(false);
+  const [metaTestResult, setMetaTestResult] = useState(null);
+  const [metaTestPhone, setMetaTestPhone] = useState('');
 
   const [savingProfile, setSavingProfile] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -105,7 +114,12 @@ export default function Settings() {
         setWelcomeTemplate(templates.welcome || '');
 
         const wa = res.gym.settings?.whatsapp || {};
+        setWaProvider(wa.provider || 'whatsapp_qr');
         setAutoWelcome(wa.autoWelcome !== false);
+        const meta = wa.meta || {};
+        setMetaPhoneId(meta.phoneNumberId || '');
+        setMetaAccessToken(meta.accessToken || '');
+        setMetaWabaId(meta.businessAccountId || '');
 
         const mse = res.gym.settings?.multiStageExpiry || {};
         setMultiStageEnabled(mse.enabled !== false);
@@ -221,8 +235,13 @@ export default function Settings() {
         gstin,
         settings: {
           whatsapp: {
-            provider: 'whatsapp_qr',
-            autoWelcome
+            provider: waProvider,
+            autoWelcome,
+            meta: {
+              phoneNumberId: metaPhoneId.trim(),
+              accessToken: metaAccessToken.trim(),
+              businessAccountId: metaWabaId.trim()
+            }
           },
           whatsappTemplates: {
             expiringSoon: expiringTemplate,
@@ -296,6 +315,39 @@ export default function Settings() {
     }
   };
 
+  const handleTestMeta = async () => {
+    if (!metaPhoneId.trim() || !metaAccessToken.trim()) {
+      alert('Please enter both Meta Phone Number ID and Access Token in the fields below.');
+      return;
+    }
+    const target = metaTestPhone.trim() || testPhone.trim();
+    if (!target) {
+      alert('Please enter a recipient 10-digit mobile number for testing.');
+      return;
+    }
+    setTestingMeta(true);
+    setMetaTestResult(null);
+    try {
+      const res = await api.testMetaCloudAPI({
+        phoneNumberId: metaPhoneId.trim(),
+        accessToken: metaAccessToken.trim(),
+        testPhone: target
+      });
+      setMetaTestResult({
+        success: true,
+        message: 'Meta Cloud API verified successfully! Test message delivered.',
+        details: res.result?.details || `Dispatched via Meta Graph API to +91 ${target}`
+      });
+    } catch (err) {
+      setMetaTestResult({
+        success: false,
+        message: err.message || 'Meta API verification failed.'
+      });
+    } finally {
+      setTestingMeta(false);
+    }
+  };
+
   const handleManualMultiStageScan = async () => {
     setTriggeringScan(true);
     try {
@@ -325,8 +377,12 @@ export default function Settings() {
 
   // Dispatch broadcast to members
   const handleSendBroadcast = async () => {
-    if (!qrData.isConnected) {
+    if (waProvider === 'whatsapp_qr' && !qrData.isConnected) {
       alert('Please connect your gym WhatsApp number first by scanning the QR code above.');
+      return;
+    }
+    if (waProvider === 'meta' && (!metaPhoneId.trim() || !metaAccessToken.trim())) {
+      alert('Please configure your Meta WhatsApp Phone Number ID and Access Token in the settings above first.');
       return;
     }
     if (!broadcastMessage.trim()) {
@@ -606,26 +662,114 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* 3. Direct WhatsApp Link via QR Code */}
-        <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm space-y-4">
+        {/* 3. Automated WhatsApp Delivery Gateway */}
+        <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm space-y-5">
           <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2">
             <div>
-              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-2">
-                <QrCode className="w-4 h-4 text-emerald-600" />
-                <span>Direct WhatsApp (Scan QR Code)</span>
-              </h2>
-              <p className="text-xs text-slate-400">
-                Link your gym's WhatsApp phone to send welcome notes & reminders automatically from your number.
+              <div className="flex items-center space-x-2">
+                <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-2">
+                  <MessageSquare className="w-4 h-4 text-emerald-600" />
+                  <span>Automated WhatsApp Gateway</span>
+                </h2>
+                <span className="inline-flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-[11px] font-semibold bg-indigo-50 text-indigo-700 border border-indigo-200">
+                  <ShieldCheck className="w-3 h-3 text-indigo-600" />
+                  <span>Dedicated Session: <strong>{gymName || 'Current Gym'}</strong></span>
+                </span>
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                Each gym maintains an isolated, dedicated WhatsApp session. Choose between Direct Phone Pairing or Meta Cloud API.
               </p>
             </div>
-            <span className={`self-start sm:self-auto inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold ${
-              qrData.isConnected 
-                ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
-                : 'bg-amber-100 text-amber-800 border border-amber-200'
-            }`}>
-              <span className={`w-2 h-2 rounded-full ${qrData.isConnected ? 'bg-emerald-500' : 'bg-amber-500'} animate-pulse`} />
-              <span>{qrData.isConnected ? `Connected (+${qrData.linkedPhone})` : 'Waiting for QR Scan'}</span>
-            </span>
+
+            <div className="self-start sm:self-auto flex items-center space-x-2">
+              {waProvider === 'whatsapp_qr' ? (
+                <span className={`inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold ${
+                  qrData.isConnected 
+                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                    : 'bg-amber-100 text-amber-800 border border-amber-200'
+                }`}>
+                  <span className={`w-2 h-2 rounded-full ${qrData.isConnected ? 'bg-emerald-500' : 'bg-amber-500'} animate-pulse`} />
+                  <span>{qrData.isConnected ? `Connected (+${qrData.linkedPhone})` : 'Waiting for QR Scan'}</span>
+                </span>
+              ) : (
+                <span className={`inline-flex items-center space-x-1.5 px-3 py-1 rounded-full text-xs font-bold ${
+                  metaPhoneId && metaAccessToken
+                    ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                    : 'bg-amber-100 text-amber-800 border border-amber-200'
+                }`}>
+                  <Cloud className="w-3.5 h-3.5 text-blue-600" />
+                  <span>{metaPhoneId && metaAccessToken ? 'Meta API Configured' : 'Credentials Needed'}</span>
+                </span>
+              )}
+            </div>
+          </div>
+
+          {/* Provider Selection Tabs */}
+          <div>
+            <label className="block font-semibold text-slate-700 text-xs mb-2">Select WhatsApp Dispatch Gateway Provider</label>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              {/* Option 1: Direct WhatsApp Web QR */}
+              <button
+                type="button"
+                onClick={() => setWaProvider('whatsapp_qr')}
+                className={`p-4 rounded-xl border text-left transition-all relative ${
+                  waProvider === 'whatsapp_qr'
+                    ? 'border-emerald-500 bg-emerald-50/40 ring-2 ring-emerald-500/20 shadow-sm'
+                    : 'border-slate-200 bg-white hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center space-x-2.5">
+                    <div className={`p-2 rounded-lg ${waProvider === 'whatsapp_qr' ? 'bg-emerald-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                      <Smartphone className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-xs text-slate-900">Direct WhatsApp (Scan QR)</div>
+                      <div className="text-[11px] text-slate-500">Free • Dedicated Phone Link • Zero API Costs</div>
+                    </div>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    qrData.isConnected ? 'bg-emerald-100 text-emerald-800' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {qrData.isConnected ? '● Connected' : '○ Disconnected'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-600 mt-2.5 leading-relaxed">
+                  Pairs directly with your gym's physical mobile phone using WhatsApp Linked Devices. Automated messages are delivered from your actual gym phone number.
+                </p>
+              </button>
+
+              {/* Option 2: Meta WhatsApp Cloud API */}
+              <button
+                type="button"
+                onClick={() => setWaProvider('meta')}
+                className={`p-4 rounded-xl border text-left transition-all relative ${
+                  waProvider === 'meta'
+                    ? 'border-blue-500 bg-blue-50/40 ring-2 ring-blue-500/20 shadow-sm'
+                    : 'border-slate-200 bg-white hover:border-slate-300'
+                }`}
+              >
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center space-x-2.5">
+                    <div className={`p-2 rounded-lg ${waProvider === 'meta' ? 'bg-blue-600 text-white' : 'bg-slate-100 text-slate-600'}`}>
+                      <Cloud className="w-5 h-5" />
+                    </div>
+                    <div>
+                      <div className="font-bold text-xs text-slate-900">Meta WhatsApp Cloud API</div>
+                      <div className="text-[11px] text-slate-500">Official Platform • High Speed • High Reliability</div>
+                    </div>
+                  </div>
+                  <span className={`text-[10px] font-bold px-2 py-0.5 rounded-full ${
+                    metaPhoneId && metaAccessToken ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {metaPhoneId && metaAccessToken ? '● Configured' : '○ Setup Needed'}
+                  </span>
+                </div>
+                <p className="text-[11px] text-slate-600 mt-2.5 leading-relaxed">
+                  Dispatches via Meta's official Graph API (v21.0). Requires a Meta Developer WhatsApp Business Account. Meta provides 1,000 free conversations every month.
+                </p>
+              </button>
+            </div>
           </div>
 
           <div className="space-y-4 text-xs">
@@ -643,136 +787,265 @@ export default function Settings() {
                   Auto-send Welcome Message on Customer Registration
                 </span>
                 <span className="text-[11px] text-emerald-800 block">
-                  When enabled, FitManage automatically delivers the welcome WhatsApp message directly from your linked phone the instant a member is registered.
+                  When enabled, FitManage automatically delivers the welcome WhatsApp message using your selected gateway the instant a member is registered.
                 </span>
               </label>
             </div>
 
-            {/* Direct Phone WhatsApp Link (Multi-Device) */}
-            <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
-              <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
-                <div className="flex items-center space-x-2">
-                  <Smartphone className="w-5 h-5 text-emerald-600" />
-                  <div>
-                    <h4 className="font-bold text-slate-900 text-sm">Direct Phone WhatsApp Link (Multi-Device)</h4>
-                    <p className="text-[11px] text-slate-500">Sends automatic welcome notes and expiry reminders straight from your gym's real phone.</p>
-                  </div>
-                </div>
-                <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
-                  qrData.isConnected 
-                    ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
-                    : 'bg-amber-100 text-amber-800 border border-amber-200'
-                }`}>
-                  {qrData.isConnected ? '● Connected & Ready' : 'Waiting for QR Scan'}
-                </span>
-              </div>
-
-              {qrData.isConnected ? (
-                <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-200 space-y-2 text-left">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center space-x-2">
-                      <CheckCircle2 className="w-5 h-5 text-emerald-600" />
-                      <span className="font-bold text-emerald-950 text-sm">Device Paired Successfully</span>
+            {/* View 1: Direct WhatsApp Web QR Panel */}
+            {waProvider === 'whatsapp_qr' && (
+              <div className="p-5 rounded-2xl bg-slate-50 border border-slate-200 space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-slate-200/80">
+                  <div className="flex items-center space-x-2">
+                    <Smartphone className="w-5 h-5 text-emerald-600" />
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-sm">Direct Phone WhatsApp Link (Multi-Device)</h4>
+                      <p className="text-[11px] text-slate-500">Dedicated phone session for <strong>{gymName || 'this gym'}</strong>. Sends notes & expiry reminders straight from your gym's real phone.</p>
                     </div>
-                    <button
-                      type="button"
-                      onClick={handleDisconnectQR}
-                      className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs transition-colors border border-rose-200"
-                    >
-                      Disconnect Device
-                    </button>
                   </div>
-                  <p className="text-xs text-slate-700">
-                    Linked Number: <strong className="font-mono text-emerald-800 text-sm">+{qrData.linkedPhone}</strong>
-                  </p>
-                  <p className="text-[11px] text-emerald-800">
-                    🎉 Your WhatsApp is active! As soon as any customer registers, FitManage will automatically deliver the welcome message from your gym's number.
-                  </p>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                    qrData.isConnected 
+                      ? 'bg-emerald-100 text-emerald-800 border border-emerald-200' 
+                      : 'bg-amber-100 text-amber-800 border border-amber-200'
+                  }`}>
+                    {qrData.isConnected ? '● Connected & Ready' : 'Waiting for QR Scan'}
+                  </span>
                 </div>
-              ) : (
-                <div className="flex flex-col sm:flex-row items-center justify-center gap-6 py-2">
-                  {/* QR Display */}
-                  <div className="flex flex-col items-center space-y-2">
-                    {qrData.qrCode ? (
-                      <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-md">
-                        <img src={qrData.qrCode} alt="WhatsApp QR Code" className="w-48 h-48 rounded-lg" />
-                      </div>
-                    ) : (
-                      <div className="w-48 h-48 bg-white rounded-2xl border border-slate-200 flex flex-col items-center justify-center text-slate-400 text-xs shadow-sm p-4 text-center">
-                        <RefreshCw className="w-6 h-6 animate-spin mb-2 text-emerald-500" />
-                        <span>Generating QR Code...</span>
-                      </div>
-                    )}
-                    <button
-                      type="button"
-                      onClick={handleRefreshQR}
-                      disabled={qrRefreshing}
-                      className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-semibold text-xs flex items-center space-x-1.5 transition-colors shadow-sm"
-                    >
-                      <RefreshCw className={`w-3.5 h-3.5 ${qrRefreshing ? 'animate-spin' : ''}`} />
-                      <span>{qrRefreshing ? 'Refreshing...' : 'Refresh QR Code'}</span>
-                    </button>
-                  </div>
 
-                  {/* Step-by-step pairing instructions */}
-                  <div className="text-xs space-y-2.5 max-w-sm text-left">
-                    <p className="font-bold text-slate-900 text-xs uppercase tracking-wider text-emerald-700">
-                      How to Link in 3 Steps:
+                {qrData.isConnected ? (
+                  <div className="bg-emerald-50 rounded-2xl p-4 border border-emerald-200 space-y-2 text-left">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-600" />
+                        <span className="font-bold text-emerald-950 text-sm">Device Paired Successfully</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={handleDisconnectQR}
+                        className="px-3 py-1.5 rounded-xl bg-rose-50 hover:bg-rose-100 text-rose-700 font-bold text-xs transition-colors border border-rose-200"
+                      >
+                        Disconnect Device
+                      </button>
+                    </div>
+                    <p className="text-xs text-slate-700">
+                      Linked Number: <strong className="font-mono text-emerald-800 text-sm">+{qrData.linkedPhone}</strong>
                     </p>
-                    <div className="space-y-2 text-slate-700">
-                      <div className="flex items-start space-x-2 bg-white p-2.5 rounded-xl border border-slate-200/60">
-                        <span className="font-bold text-slate-900 font-mono">1.</span>
-                        <span>Open <strong>WhatsApp</strong> on your phone.</span>
-                      </div>
-                      <div className="flex items-start space-x-2 bg-white p-2.5 rounded-xl border border-slate-200/60">
-                        <span className="font-bold text-slate-900 font-mono">2.</span>
-                        <span>Tap <strong>Settings (or ⋮ 3 dots) → Linked Devices</strong>.</span>
-                      </div>
-                      <div className="flex items-start space-x-2 bg-white p-2.5 rounded-xl border border-slate-200/60">
-                        <span className="font-bold text-slate-900 font-mono">3.</span>
-                        <span>Tap <strong>Link a Device</strong> and point your camera at this QR code.</span>
+                    <p className="text-[11px] text-emerald-800">
+                      🎉 Your WhatsApp is active! As soon as any customer registers, FitManage will automatically deliver the welcome message from your gym's number.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-6 py-2">
+                    {/* QR Display */}
+                    <div className="flex flex-col items-center space-y-2">
+                      {qrData.qrCode ? (
+                        <div className="bg-white p-3 rounded-2xl border border-slate-200 shadow-md">
+                          <img src={qrData.qrCode} alt="WhatsApp QR Code" className="w-48 h-48 rounded-lg" />
+                        </div>
+                      ) : (
+                        <div className="w-48 h-48 bg-white rounded-2xl border border-slate-200 flex flex-col items-center justify-center text-slate-400 text-xs shadow-sm p-4 text-center">
+                          <RefreshCw className="w-6 h-6 animate-spin mb-2 text-emerald-500" />
+                          <span>Generating Dedicated QR Code...</span>
+                        </div>
+                      )}
+                      <button
+                        type="button"
+                        onClick={handleRefreshQR}
+                        disabled={qrRefreshing}
+                        className="px-3 py-1.5 rounded-xl bg-white hover:bg-slate-100 text-slate-700 border border-slate-200 font-semibold text-xs flex items-center space-x-1.5 transition-colors shadow-sm"
+                      >
+                        <RefreshCw className={`w-3.5 h-3.5 ${qrRefreshing ? 'animate-spin' : ''}`} />
+                        <span>{qrRefreshing ? 'Refreshing...' : 'Refresh QR Code'}</span>
+                      </button>
+                    </div>
+
+                    {/* Step-by-step pairing instructions */}
+                    <div className="text-xs space-y-2.5 max-w-sm text-left">
+                      <p className="font-bold text-slate-900 text-xs uppercase tracking-wider text-emerald-700">
+                        How to Link in 3 Steps:
+                      </p>
+                      <div className="space-y-2 text-slate-700">
+                        <div className="flex items-start space-x-2 bg-white p-2.5 rounded-xl border border-slate-200/60">
+                          <span className="font-bold text-slate-900 font-mono">1.</span>
+                          <span>Open <strong>WhatsApp</strong> on your gym's phone.</span>
+                        </div>
+                        <div className="flex items-start space-x-2 bg-white p-2.5 rounded-xl border border-slate-200/60">
+                          <span className="font-bold text-slate-900 font-mono">2.</span>
+                          <span>Tap <strong>Settings (or ⋮ 3 dots) → Linked Devices</strong>.</span>
+                        </div>
+                        <div className="flex items-start space-x-2 bg-white p-2.5 rounded-xl border border-slate-200/60">
+                          <span className="font-bold text-slate-900 font-mono">3.</span>
+                          <span>Tap <strong>Link a Device</strong> and point your camera at this QR code.</span>
+                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              )}
-            </div>
+                )}
 
-            {/* Test WhatsApp Gateway Dispatch */}
-            <div className="p-4 rounded-xl bg-emerald-50/50 border border-emerald-200/80 space-y-3">
-              <span className="font-bold text-slate-800 text-xs block">
-                🧪 Verify & Test WhatsApp Dispatch
-              </span>
-              <p className="text-[11px] text-slate-500">
-                Send a real test message to verify delivery through your linked WhatsApp phone.
-              </p>
-              <div className="flex flex-col sm:flex-row gap-2">
-                <input
-                  type="tel"
-                  placeholder="Recipient 10-digit mobile number"
-                  value={testPhone}
-                  onChange={(e) => setTestPhone(e.target.value)}
-                  className="flex-1 p-2.5 rounded-xl border border-slate-200 bg-white font-mono text-xs"
-                />
-                <button
-                  type="button"
-                  onClick={handleTestWhatsApp}
-                  disabled={testingGateway}
-                  className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition-all disabled:opacity-50"
-                >
-                  {testingGateway ? 'Sending Test...' : 'Send Test WhatsApp'}
-                </button>
+                {/* Test WhatsApp Gateway Dispatch */}
+                <div className="p-4 rounded-xl bg-emerald-50/50 border border-emerald-200/80 space-y-3">
+                  <span className="font-bold text-slate-800 text-xs block">
+                    🧪 Verify & Test Direct WhatsApp Dispatch
+                  </span>
+                  <p className="text-[11px] text-slate-500">
+                    Send a real test message to verify delivery through your linked WhatsApp phone.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="tel"
+                      placeholder="Recipient 10-digit mobile number"
+                      value={testPhone}
+                      onChange={(e) => setTestPhone(e.target.value)}
+                      className="flex-1 p-2.5 rounded-xl border border-slate-200 bg-white font-mono text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleTestWhatsApp}
+                      disabled={testingGateway}
+                      className="px-4 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-sm transition-all disabled:opacity-50"
+                    >
+                      {testingGateway ? 'Sending Test...' : 'Send Test WhatsApp'}
+                    </button>
+                  </div>
+
+                  {testResult && (
+                    <div className={`p-3 rounded-xl text-xs font-semibold ${
+                      testResult.success ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
+                    }`}>
+                      <p>{testResult.message}</p>
+                      {testResult.details && <p className="text-[10px] font-normal mt-0.5 opacity-80">{testResult.details}</p>}
+                    </div>
+                  )}
+                </div>
               </div>
+            )}
 
-              {testResult && (
-                <div className={`p-3 rounded-xl text-xs font-semibold ${
-                  testResult.success ? 'bg-emerald-100 text-emerald-800' : 'bg-rose-100 text-rose-800'
-                }`}>
-                  <p>{testResult.message}</p>
-                  {testResult.details && <p className="text-[10px] font-normal mt-0.5 opacity-80">{testResult.details}</p>}
+            {/* View 2: Meta WhatsApp Cloud API Panel */}
+            {waProvider === 'meta' && (
+              <div className="p-5 rounded-2xl bg-blue-50/40 border border-blue-200/80 space-y-4">
+                <div className="flex items-center justify-between pb-2 border-b border-blue-200/60">
+                  <div className="flex items-center space-x-2">
+                    <Cloud className="w-5 h-5 text-blue-600" />
+                    <div>
+                      <h4 className="font-bold text-slate-900 text-sm">Meta WhatsApp Cloud API Configuration</h4>
+                      <p className="text-[11px] text-slate-500">Official WhatsApp Business Platform via Meta Graph API (v21.0).</p>
+                    </div>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-full text-xs font-bold ${
+                    metaPhoneId && metaAccessToken 
+                      ? 'bg-blue-100 text-blue-800 border border-blue-200' 
+                      : 'bg-amber-100 text-amber-800 border border-amber-200'
+                  }`}>
+                    {metaPhoneId && metaAccessToken ? '● Credentials Configured' : '○ Setup Required'}
+                  </span>
                 </div>
-              )}
-            </div>
+
+                {/* API Fields */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1 flex items-center space-x-1">
+                      <span>Phone Number ID</span>
+                      <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 104859201948271"
+                      value={metaPhoneId}
+                      onChange={(e) => setMetaPhoneId(e.target.value)}
+                      className="w-full p-2.5 rounded-xl border border-slate-200 bg-white font-mono text-xs"
+                    />
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Found in Meta Developers → WhatsApp → API Setup → Phone number ID.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1 flex items-center space-x-1">
+                      <span>Business Account ID (WABA ID)</span>
+                      <span className="text-slate-400 font-normal">(Optional)</span>
+                    </label>
+                    <input
+                      type="text"
+                      placeholder="e.g. 102948201948290"
+                      value={metaWabaId}
+                      onChange={(e) => setMetaWabaId(e.target.value)}
+                      className="w-full p-2.5 rounded-xl border border-slate-200 bg-white font-mono text-xs"
+                    />
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Found in Meta Developers → WhatsApp → API Setup → WhatsApp Business Account ID.
+                    </p>
+                  </div>
+
+                  <div className="sm:col-span-2">
+                    <label className="block font-semibold text-slate-700 mb-1 flex items-center space-x-1">
+                      <span>Permanent System User Access Token</span>
+                      <span className="text-rose-500">*</span>
+                    </label>
+                    <input
+                      type="password"
+                      placeholder="EAAG..."
+                      value={metaAccessToken}
+                      onChange={(e) => setMetaAccessToken(e.target.value)}
+                      className="w-full p-2.5 rounded-xl border border-slate-200 bg-white font-mono text-xs"
+                    />
+                    <p className="text-[11px] text-slate-400 mt-1">
+                      Generate in Meta Business Suite → System Users with <code className="bg-slate-100 px-1 rounded">whatsapp_business_messaging</code> &amp; <code className="bg-slate-100 px-1 rounded">whatsapp_business_management</code> permissions.
+                    </p>
+                  </div>
+                </div>
+
+                {/* Helpful Guide Card */}
+                <div className="p-3.5 rounded-xl bg-blue-100/50 border border-blue-200 text-blue-900 space-y-1">
+                  <div className="font-bold flex items-center space-x-1.5">
+                    <Globe className="w-4 h-4 text-blue-700" />
+                    <span>How Meta WhatsApp Cloud API Works</span>
+                  </div>
+                  <p className="text-[11px] text-blue-800 leading-relaxed">
+                    Meta Cloud API sends messages straight through Facebook's global infrastructure. Meta provides <strong>1,000 free service conversations each month</strong>.
+                    You do not need to keep any phone connected or online once configured.
+                  </p>
+                </div>
+
+                {/* Test Meta Cloud API Gateway */}
+                <div className="p-4 rounded-xl bg-white border border-blue-200 space-y-3">
+                  <span className="font-bold text-slate-800 text-xs block">
+                    🧪 Verify & Test Meta Cloud API Dispatch
+                  </span>
+                  <p className="text-[11px] text-slate-500">
+                    Send a test WhatsApp message to verify that your Meta Access Token and Phone Number ID are valid and authorized.
+                  </p>
+                  <div className="flex flex-col sm:flex-row gap-2">
+                    <input
+                      type="tel"
+                      placeholder="Recipient 10-digit mobile number"
+                      value={metaTestPhone || testPhone}
+                      onChange={(e) => {
+                        setMetaTestPhone(e.target.value);
+                        setTestPhone(e.target.value);
+                      }}
+                      className="flex-1 p-2.5 rounded-xl border border-slate-200 bg-slate-50 font-mono text-xs"
+                    />
+                    <button
+                      type="button"
+                      onClick={handleTestMeta}
+                      disabled={testingMeta || !metaPhoneId.trim() || !metaAccessToken.trim()}
+                      className="px-4 py-2.5 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-bold text-xs shadow-sm transition-all disabled:opacity-50"
+                    >
+                      {testingMeta ? 'Verifying with Meta...' : 'Send Meta Test Ping'}
+                    </button>
+                  </div>
+
+                  {metaTestResult && (
+                    <div className={`p-3 rounded-xl text-xs font-semibold ${
+                      metaTestResult.success ? 'bg-blue-100 text-blue-900 border border-blue-200' : 'bg-rose-100 text-rose-800 border border-rose-200'
+                    }`}>
+                      <p>{metaTestResult.message}</p>
+                      {metaTestResult.details && <p className="text-[10px] font-normal mt-0.5 opacity-80">{metaTestResult.details}</p>}
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
         </div>
 
@@ -1098,12 +1371,16 @@ export default function Settings() {
 
             <div className="pt-2 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <p className="text-[11px] text-slate-400">
-                Dispatches sequentially via linked WhatsApp with polite pauses to ensure 100% delivery.
+                Dispatches sequentially via {waProvider === 'meta' ? 'Meta WhatsApp Cloud API' : 'linked WhatsApp'} with polite pauses to ensure 100% delivery.
               </p>
               <button
                 type="button"
                 onClick={handleSendBroadcast}
-                disabled={broadcasting || broadcastRecipientsCount === 0 || !qrData.isConnected}
+                disabled={
+                  broadcasting || 
+                  broadcastRecipientsCount === 0 || 
+                  (waProvider === 'whatsapp_qr' ? !qrData.isConnected : (!metaPhoneId.trim() || !metaAccessToken.trim()))
+                }
                 className="px-5 py-2.5 rounded-xl bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-bold text-xs flex items-center justify-center space-x-1.5 shadow-sm"
               >
                 <Send className="w-3.5 h-3.5" />

@@ -1,6 +1,7 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
 import { db, getDaysRemaining, calculateMembershipStatus } from '../db.js';
+import { whatsappService } from '../services/whatsapp.js';
 import { whatsappWebService } from '../services/whatsappWeb.js';
 
 const router = express.Router();
@@ -70,16 +71,22 @@ router.post('/send-otp', async (req, res) => {
       gymId: customer.gymId
     });
 
-    // Send OTP via linked WhatsApp if connected
+    // Send OTP via configured WhatsApp gateway for this member's gym (Dedicated QR or Meta Cloud API)
     let whatsappDispatched = false;
-    if (whatsappWebService.getStatus().isConnected) {
-      const msg = `🔐 *FitManage Member Portal Login*\n\nHello *${customer.name}*!\nYour One-Time Password (OTP) to access your gym pass & receipts is: *${otp}*\n\n⏱️ This code is valid for 10 minutes.\n\n_${gym.gymName}_`;
-      try {
-        await whatsappWebService.sendMessage(cleanPhone, msg);
-        whatsappDispatched = true;
-      } catch (err) {
-        console.warn('[Portal OTP] WhatsApp send failed:', err.message);
-      }
+    const msg = `🔐 *FitManage Member Portal Login*\n\nHello *${customer.name}*!\nYour One-Time Password (OTP) to access your gym pass & receipts is: *${otp}*\n\n⏱️ This code is valid for 10 minutes.\n\n_${gym.gymName}_`;
+
+    try {
+      const sendRes = await whatsappService.sendAutomatedWhatsApp({
+        gymId: customer.gymId,
+        customerId: customer.customerId,
+        contactNumber: cleanPhone,
+        message: msg,
+        reminderType: 'portal_otp',
+        staffName: 'Portal Security'
+      });
+      whatsappDispatched = sendRes.success;
+    } catch (err) {
+      console.warn('[Portal OTP] WhatsApp send failed:', err.message);
     }
 
     res.json({

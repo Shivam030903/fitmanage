@@ -23,7 +23,53 @@ export const whatsappService = {
   },
 
   /**
-   * Send WhatsApp message via configured automated gateway
+   * Send WhatsApp message via Official Meta WhatsApp Business Cloud API
+   */
+  async sendMetaWhatsApp({ phoneNumberId, accessToken, toPhone, message }) {
+    if (!phoneNumberId || !accessToken) {
+      throw new Error('Meta WhatsApp Cloud API credentials missing (Phone Number ID or Access Token).');
+    }
+
+    const cleanPhone = toPhone.replace(/\D/g, '').slice(-10);
+    const recipient = cleanPhone.startsWith('91') ? cleanPhone : `91${cleanPhone}`;
+
+    const url = `https://graph.facebook.com/v21.0/${phoneNumberId.trim()}/messages`;
+    const response = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${accessToken.trim()}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify({
+        messaging_product: 'whatsapp',
+        recipient_type: 'individual',
+        to: recipient,
+        type: 'text',
+        text: {
+          preview_url: false,
+          body: message
+        }
+      })
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      const errorMsg = data.error?.message || data.error?.error_data?.details || JSON.stringify(data.error);
+      throw new Error(`Meta Cloud API Error: ${errorMsg}`);
+    }
+
+    return {
+      success: true,
+      messageId: data.messages?.[0]?.id,
+      to: `+${recipient}`,
+      status: 'DELIVERED_AUTOMATIC',
+      provider: 'meta',
+      details: `Delivered via Meta WhatsApp Cloud API (Msg ID: ${data.messages?.[0]?.id})`
+    };
+  },
+
+  /**
+   * Send WhatsApp message via configured automated gateway (Dedicated QR Session or Meta Cloud API)
    */
   async sendAutomatedWhatsApp({ gymId, customerId, contactNumber, message, reminderType = 'welcome', membershipId = null, staffName = 'Auto System' }) {
     const intlNumber = this.normalizePhoneNumber(contactNumber);
@@ -34,29 +80,42 @@ export const whatsappService = {
 
     const gym = db.gyms.findOne({ _id: gymId });
     const waSettings = gym?.settings?.whatsapp || {};
-    const provider = 'whatsapp_qr';
+    const provider = waSettings.provider || 'whatsapp_qr';
 
     let gatewayResult = {
       status: 'DELIVERED_AUTOMATIC',
       providerUsed: provider,
-      details: 'Dispatched via Direct Linked WhatsApp Device'
+      details: 'Dispatched via Automated WhatsApp Gateway'
     };
 
     try {
-      // Direct Linked WhatsApp Device (QR Code Pairing)
-      if (whatsappWebService.getStatus().isConnected) {
-        const res = await whatsappWebService.sendMessage(intlNumber, message);
+      if (provider === 'meta') {
+        const metaConf = waSettings.meta || {};
+        const metaRes = await this.sendMetaWhatsApp({
+          phoneNumberId: metaConf.phoneNumberId,
+          accessToken: metaConf.accessToken,
+          toPhone: intlNumber,
+          message
+        });
         gatewayResult.status = 'DELIVERED_AUTOMATIC';
-        gatewayResult.details = `Delivered directly via linked gym WhatsApp (+${whatsappWebService.linkedPhone})`;
+        gatewayResult.details = metaRes.details;
       } else {
-        console.warn('[WhatsApp] Device not linked. Please scan QR in Settings.');
-        gatewayResult.status = 'DEVICE_NOT_LINKED';
-        gatewayResult.details = 'WhatsApp device is not linked. Please scan QR code in Settings.';
+        // Direct Linked WhatsApp Device (Dedicated QR Code Session per Gym)
+        const qrStatus = whatsappWebService.getStatus(gymId);
+        if (qrStatus.isConnected) {
+          await whatsappWebService.sendMessage(gymId, intlNumber, message);
+          gatewayResult.status = 'DELIVERED_AUTOMATIC';
+          gatewayResult.details = `Delivered directly via linked gym WhatsApp (+${qrStatus.linkedPhone})`;
+        } else {
+          console.warn(`[WhatsApp] Gym [${gymId}] device not linked. Please scan QR in Settings.`);
+          gatewayResult.status = 'DEVICE_NOT_LINKED';
+          gatewayResult.details = `WhatsApp device for ${gym?.gymName || 'gym'} is not linked. Please scan QR code in Settings.`;
+        }
       }
     } catch (err) {
-      console.error('[WhatsApp Web Device] Dispatch error:', err.message);
+      console.error(`[WhatsApp ${provider}] Dispatch error:`, err.message);
       gatewayResult.status = 'DISPATCH_QUEUED';
-      gatewayResult.details = `Linked device error: ${err.message}`;
+      gatewayResult.details = `${provider === 'meta' ? 'Meta Cloud API' : 'Linked device'} error: ${err.message}`;
     }
 
     // Record in DB reminder logs
@@ -135,11 +194,16 @@ export const whatsappService = {
    * Test WhatsApp Gateway configuration by sending a verification ping
    */
   async testWhatsAppGateway({ gymId, testPhone, message, staffName }) {
+    const gym = db.gyms.findOne({ _id: gymId });
+    const waSettings = gym?.settings?.whatsapp || {};
+    const provider = waSettings.provider || 'whatsapp_qr';
+    const providerName = provider === 'meta' ? 'Meta WhatsApp Cloud API' : 'Direct WhatsApp Linked Device';
+
     return await this.sendAutomatedWhatsApp({
       gymId,
       customerId: 'TEST-PING',
       contactNumber: testPhone,
-      message: message || `🚀 *FitManage WhatsApp Gateway Test*\n\nYour automated WhatsApp service is working properly!\n\nDelivery Gateway: Active\nTime: ${new Date().toLocaleTimeString('en-IN')}`,
+      message: message || `🚀 *FitManage WhatsApp Gateway Test*\n\nYour automated WhatsApp service for *${gym?.gymName || 'your gym'}* is connected and functioning properly!\n\nActive Provider: ${providerName}\nTime: ${new Date().toLocaleTimeString('en-IN')}`,
       reminderType: 'test_ping',
       staffName: staffName || 'Admin Test'
     });
