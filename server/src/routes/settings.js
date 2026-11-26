@@ -348,8 +348,9 @@ router.post('/broadcast', roleCheck(['owner', 'admin']), async (req, res) => {
           errors.push({ name: member.name, phone: cleanPhone, error: sendRes.details });
         }
 
-        // Delay 300ms between sends to avoid socket or API flooding
-        await new Promise(r => setTimeout(r, 300));
+        // Anti-Burst Drip Engine: Polite 2 to 3.5s randomized delay between sends to protect phone reputation
+        const broadcastDripDelay = Math.floor(2000 + Math.random() * 1500);
+        await new Promise(r => setTimeout(r, broadcastDripDelay));
       } catch (sendErr) {
         failed++;
         errors.push({ name: member.name, phone: cleanPhone, error: sendErr.message });

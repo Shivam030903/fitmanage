@@ -109,7 +109,7 @@ export default function Reminders() {
               </span>
             </div>
             <p className="text-[11px] text-slate-600 mt-0.5">
-              Automatically scans & dispatches WhatsApp reminders across 4 key stages: <strong>7 days before</strong>, <strong>1 day before</strong>, <strong>expiry day</strong>, and <strong>3 days comeback</strong> from your linked gym phone.
+              Automatically scans & dispatches WhatsApp reminders across 4 key stages: <strong>7 days before</strong>, <strong>1 day before</strong>, <strong>expiry day</strong>, and <strong>3 days comeback</strong>. Protected by human-paced Anti-Burst Drip delay (3–5s) during polite hours (9 AM – 8 PM IST).
             </p>
           </div>
         </div>

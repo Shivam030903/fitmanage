@@ -18,25 +18,25 @@ export const DEFAULT_STAGE_CONFIG = {
       enabled: true,
       days: 7,
       label: '7 Days Before Expiry (Gentle Heads Up)',
-      template: 'Hello {customerName}! 👋\n\nA friendly reminder that your {planName} membership at {gymName} will expire in 7 days on {expiryDate}.\n\nRenew early to maintain uninterrupted access and keep crushing your fitness goals! If you need any help, our front desk team is ready to assist. 💪\n\n_{gymName}_'
+      template: 'Hello {customerName}! 👋\n\nA friendly reminder that your {planName} membership at {gymName} will expire in 7 days on {expiryDate}.\n\nRenew early to maintain uninterrupted access and keep crushing your fitness goals! If you need any help, our front desk team is ready to assist. 💪\n\n_{gymName}_\n_If already renewed, please ignore. Reply STOP to mute._'
     },
     stage_1day: {
       enabled: true,
       days: 1,
       label: '1 Day Before Expiry (Renewal Offer)',
-      template: 'Hi {customerName}! ⏰\n\nYour gym membership at {gymName} expires TOMORROW ({expiryDate})!\n\nWe love having you in our fitness family! Renew today to lock in special renewal perks and keep your workout streak alive. 🏋️‍♂️\n\nDrop by reception or reply here to renew!\n_{gymName}_'
+      template: 'Hi {customerName}! ⏰\n\nYour gym membership at {gymName} expires TOMORROW ({expiryDate})!\n\nWe love having you in our fitness family! Renew today to lock in special renewal perks and keep your workout streak alive. 🏋️‍♂️\n\nDrop by reception or reply here to renew!\n_{gymName}_\n_If already renewed, please ignore._'
     },
     stage_expiry_day: {
       enabled: true,
       days: 0,
       label: 'On Expiry Day (Action Required)',
-      template: 'Important Notice, {customerName}! ⚠️\n\nYour {planName} membership at {gymName} expires TODAY ({expiryDate}).\n\nTo ensure uninterrupted gym access and continue your fitness journey without pause, please visit our front desk to renew today! 🚀\n\nStay fit, stay strong!\n_{gymName}_'
+      template: 'Important Notice, {customerName}! ⚠️\n\nYour {planName} membership at {gymName} expires TODAY ({expiryDate}).\n\nTo ensure uninterrupted gym access and continue your fitness journey without pause, please visit our front desk to renew today! 🚀\n\nStay fit, stay strong!\n_{gymName}_\n_If already renewed, please ignore._'
     },
     stage_3days_after: {
       enabled: true,
       days: -3,
       label: '3 Days After Expiry (Comeback Discount)',
-      template: 'We miss seeing you, {customerName}! 🥺\n\nIt has been 3 days since your membership at {gymName} expired on {expiryDate}.\n\nDon\'t let your hard work fade away! We have a special "Welcome Back" renewal benefit waiting for you. Visit us today and let\'s get back on track! 💖💪\n\n_{gymName}_'
+      template: 'We miss seeing you, {customerName}! 🥺\n\nIt has been 3 days since your membership at {gymName} expired on {expiryDate}.\n\nDon\'t let your hard work fade away! We have a special "Welcome Back" renewal benefit waiting for you. Visit us today and let\'s get back on track! 💖💪\n\n_{gymName}_\n_Reply STOP to mute alerts._'
     }
   }
 };
@@ -45,10 +45,28 @@ export const expiryScheduler = {
   intervalId: null,
 
   /**
-   * Run multi-stage scan across all gyms or a specific gym
+   * Run multi-stage scan across all gyms or a specific gym with Anti-Burst Drip Engine
    */
-  async runExpiryScan(targetGymId = null) {
-    console.log(`[Expiry Scheduler] Starting automated multi-stage expiry scan across gyms...`);
+  async runExpiryScan(targetGymId = null, options = {}) {
+    const { force = false } = options;
+
+    // Polite Delivery Hours Window Protection (9:00 AM to 8:00 PM IST)
+    const istNow = new Date(new Date().toLocaleString('en-US', { timeZone: 'Asia/Kolkata' }));
+    const currentHour = istNow.getHours();
+    const isPoliteHour = currentHour >= 9 && currentHour < 20;
+
+    if (!isPoliteHour && !force) {
+      console.log(`[Expiry Scheduler] Outside polite sending hours (9:00 AM - 8:00 PM IST). Current IST time: ${currentHour}:${String(istNow.getMinutes()).padStart(2, '0')}. Skipping automated dispatch.`);
+      return {
+        timestamp: new Date().toISOString(),
+        skipped: true,
+        reason: `Outside polite sending hours (${currentHour}:00 IST). Messages automatically resume between 9:00 AM and 8:00 PM IST.`,
+        dispatchedCount: 0,
+        skippedCount: 0
+      };
+    }
+
+    console.log(`[Expiry Scheduler] Starting multi-stage expiry scan (Anti-Burst Drip Engine active)...`);
 
     const gyms = targetGymId 
       ? [db.gyms.findById(targetGymId)].filter(Boolean)
@@ -157,6 +175,10 @@ export const expiryScheduler = {
               status: result.status,
               sentAt: new Date().toISOString()
             });
+
+            // Anti-Burst Drip Engine: Polite 3 to 5 second randomized delay between messages
+            const dripDelayMs = Math.floor(3000 + Math.random() * 2000);
+            await new Promise(resolve => setTimeout(resolve, dripDelayMs));
           } catch (err) {
             console.error(`[Expiry Scheduler] Error dispatching to ${customer.customerId}:`, err.message);
           }
@@ -169,22 +191,23 @@ export const expiryScheduler = {
   },
 
   /**
-   * Start recurring background scan (every 4 hours)
+   * Start recurring background scan
+   * Runs check hourly, dispatching safely with Drip Protection during polite hours (9 AM - 8 PM IST)
    */
   start() {
     if (this.intervalId) return;
 
-    // Run initial scan after 10 seconds of boot
+    // Run initial scan after 15 seconds of boot
     setTimeout(() => {
       this.runExpiryScan().catch(err => console.error('[Expiry Scheduler] Initial scan error:', err.message));
-    }, 10000);
+    }, 15000);
 
-    // Then run every 4 hours
+    // Then check every hour (will dispatch only during polite window 9 AM - 8 PM IST)
     this.intervalId = setInterval(() => {
       this.runExpiryScan().catch(err => console.error('[Expiry Scheduler] Recurring scan error:', err.message));
-    }, 4 * 60 * 60 * 1000);
+    }, 60 * 60 * 1000);
 
-    console.log('✅ [Expiry Scheduler] Multi-Stage Expiry Follow-ups scheduler running.');
+    console.log('✅ [Expiry Scheduler] Multi-Stage Expiry Follow-ups scheduler running with Anti-Burst Drip Protection (9 AM - 8 PM IST).');
   },
 
   stop() {

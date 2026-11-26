@@ -181,7 +181,7 @@ router.post('/', async (req, res) => {
 router.post('/scan-multi-stage', async (req, res) => {
   try {
     const { gymId } = req;
-    const result = await expiryScheduler.runExpiryScan(gymId);
+    const result = await expiryScheduler.runExpiryScan(gymId, { force: true });
     res.json({
       message: 'Automated multi-stage expiry scan completed.',
       result

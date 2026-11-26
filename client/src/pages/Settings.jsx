@@ -1060,6 +1060,16 @@ export default function Settings() {
               <p className="text-xs text-slate-400">
                 Automatically scan & dispatch renewal follow-ups via WhatsApp across 4 critical conversion windows.
               </p>
+              <div className="flex flex-wrap items-center gap-1.5 mt-1">
+                <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-50 text-emerald-700 border border-emerald-200">
+                  <ShieldCheck className="w-3 h-3 text-emerald-600" />
+                  <span>Anti-Burst Drip Engine Active (3–5s human delay)</span>
+                </span>
+                <span className="inline-flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-50 text-blue-700 border border-blue-200">
+                  <Clock className="w-3 h-3 text-blue-600" />
+                  <span>Polite Hours: 9:00 AM – 8:00 PM IST</span>
+                </span>
+              </div>
             </div>
             <div className="flex items-center space-x-2">
               <button
