@@ -166,5 +166,18 @@ export const api = {
   superAdminToggleLock: (gymId, data) => request(`/super-admin/gyms/${gymId}/toggle-lock`, { method: 'POST', body: JSON.stringify(data) }),
   superAdminChangePlan: (gymId, data) => request(`/super-admin/gyms/${gymId}/change-plan`, { method: 'POST', body: JSON.stringify(data) }),
   superAdminImpersonate: (gymId) => request(`/super-admin/gyms/${gymId}/impersonate`, { method: 'POST' }),
-  getSuperAdminSubscriptions: () => request('/super-admin/subscriptions')
+  getSuperAdminSubscriptions: () => request('/super-admin/subscriptions'),
+
+  // Lead & Walk-in Inquiry CRM
+  getLeads: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return request(`/leads${q ? '?' + q : ''}`);
+  },
+  createLead: (data) => request('/leads', { method: 'POST', body: JSON.stringify(data) }),
+  updateLead: (id, data) => request(`/leads/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
+  logLeadInteraction: (id, data) => request(`/leads/${id}/log-interaction`, { method: 'POST', body: JSON.stringify(data) }),
+  sendLeadPass: (id) => request(`/leads/${id}/send-pass`, { method: 'POST' }),
+  sendLeadOffer: (id, data) => request(`/leads/${id}/send-offer`, { method: 'POST', body: JSON.stringify(data || {}) }),
+  convertLead: (id, data) => request(`/leads/${id}/convert`, { method: 'POST', body: JSON.stringify(data) }),
+  deleteLead: (id) => request(`/leads/${id}`, { method: 'DELETE' })
 };

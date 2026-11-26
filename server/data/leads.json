@@ -1,0 +1,86 @@
+[
+  {
+    "gymId": "gym_fitzone_01",
+    "leadId": "LEAD-101",
+    "name": "Aman Sharma",
+    "phone": "9876543210",
+    "email": "",
+    "gender": "Male",
+    "fitnessGoal": "Muscle Building",
+    "budget": "2000",
+    "source": "Walk-in Reception",
+    "status": "converted",
+    "notes": "",
+    "followUpDate": "2026-11-29",
+    "assignedTo": "Vikram Singhania",
+    "trialPass": {
+      "passCode": "PASS-176368",
+      "validDate": "2026-11-28",
+      "isUsed": false,
+      "usedAt": null
+    },
+    "history": [
+      {
+        "date": "2026-11-26T07:46:16.368Z",
+        "type": "created",
+        "note": "Walk-in inquiry recorded by Vikram Singhania. 1-Day Trial Pass generated (PASS-176368)."
+      },
+      {
+        "date": "2026-11-26T07:49:26.149Z",
+        "type": "converted",
+        "note": "🎉 Successfully converted to gym member (FIT-1001) by Vikram Singhania."
+      }
+    ],
+    "createdAt": "2026-11-26T07:46:16.368Z",
+    "_id": "id_1795679176368_kgvckh",
+    "updatedAt": "2026-11-26T07:49:26.149Z",
+    "convertedToCustomerId": "FIT-1001",
+    "convertedAt": "2026-11-26T07:49:26.149Z"
+  },
+  {
+    "gymId": "gym_fitzone_01",
+    "leadId": "LEAD-102",
+    "name": "Rohit Verma",
+    "phone": "9811223344",
+    "email": "rohit@example.com",
+    "gender": "Male",
+    "fitnessGoal": "Weight Loss",
+    "budget": "1500",
+    "source": "Walk-in Reception",
+    "status": "trial_completed",
+    "notes": "Interested in morning cardio and crossfit",
+    "followUpDate": "2026-11-29",
+    "assignedTo": "Vikram Singhania",
+    "trialPass": {
+      "passCode": "PASS-408847",
+      "validDate": "2026-11-28",
+      "isUsed": true,
+      "usedAt": "2026-11-26T07:50:08.867Z"
+    },
+    "history": [
+      {
+        "date": "2026-11-26T07:50:08.847Z",
+        "type": "created",
+        "note": "Walk-in inquiry recorded by Vikram Singhania. 1-Day Trial Pass generated (PASS-408847)."
+      },
+      {
+        "date": "2026-11-26T07:50:08.867Z",
+        "type": "visit",
+        "note": "Guest checked in at reception with 1-Day Trial Pass (PASS-408847)."
+      },
+      {
+        "date": "2026-11-26T07:50:08.882Z",
+        "type": "visit",
+        "note": "Guest checked in at reception with 1-Day Trial Pass (PASS-408847)."
+      },
+      {
+        "date": "2026-11-26T07:52:50.532Z",
+        "type": "whatsapp",
+        "note": "Day 3 Follow-up special joining offer (15% Off) sent via WhatsApp."
+      }
+    ],
+    "createdAt": "2026-11-26T07:50:08.847Z",
+    "_id": "id_1795679408847_k21g0r",
+    "updatedAt": "2026-11-26T07:52:50.532Z"
+  }
+]

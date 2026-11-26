@@ -13,7 +13,8 @@ import {
   LogOut,
   RefreshCw,
   QrCode,
-  Sparkles
+  Sparkles,
+  Target
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -76,6 +77,17 @@ export default function MobileBottomNav() {
                   <QrCode className="w-4 h-4" />
                 </div>
                 <span>Check-in & QR</span>
+              </NavLink>
+
+              <NavLink
+                to="/leads"
+                onClick={() => setShowMoreMenu(false)}
+                className="flex items-center space-x-3 p-3 rounded-xl bg-slate-50 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 font-medium text-xs transition-colors"
+              >
+                <div className="p-2 rounded-lg bg-purple-500/10 text-purple-600">
+                  <Target className="w-4 h-4" />
+                </div>
+                <span>Leads & CRM</span>
               </NavLink>
 
               <NavLink

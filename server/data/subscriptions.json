@@ -14,5 +14,23 @@
     "createdAt": "2026-11-26T07:25:14.669Z",
     "_id": "id_1795677914671_9bbrei",
     "updatedAt": "2026-11-26T07:25:14.671Z"
+  },
+  {
+    "gymId": "gym_fitzone_01",
+    "gymName": "SJ Fitness",
+    "planId": "starter",
+    "planName": "Starter",
+    "billingCycle": "monthly",
+    "amount": 799,
+    "status": "active",
+    "periodStart": "2026-11-26T07:30:34.824Z",
+    "periodEnd": "2026-12-26T07:30:34.824Z",
+    "transactionReference": "sub_pay_demo_234807",
+    "gatewayPaymentId": "sub_pay_demo_234807",
+    "gatewayOrderId": "sub_demo_78234726",
+    "paidBy": "FitManage SaaS Founder",
+    "createdAt": "2026-11-26T07:30:34.824Z",
+    "_id": "id_1795678234826_jpgv49",
+    "updatedAt": "2026-11-26T07:30:34.826Z"
   }
 ]

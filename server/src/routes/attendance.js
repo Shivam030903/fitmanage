@@ -22,6 +22,171 @@ router.post('/check-in', (req, res) => {
     const cleanInput = identifier.trim();
     const cleanPhone = cleanInput.replace(/\D/g, '').slice(-10);
 
+    // 1. Check if input is a Guest 1-Day Trial Pass Code or Trial Lead Phone
+    const lead = db.leads.findOne({ gymId, 'trialPass.passCode': cleanInput.toUpperCase() }) ||
+      db.leads.find({ gymId }).find(l => {
+        if (l.trialPass?.passCode && l.trialPass.passCode.toLowerCase() === cleanInput.toLowerCase()) return true;
+        return cleanPhone.length === 10 && l.phone === cleanPhone && l.status !== 'converted';
+      });
+
+    const now = new Date();
+    const todayStr = now.toISOString().split('T')[0];
+    const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
+    const checkInHour = now.getHours();
+
+    if (lead) {
+      const pass = lead.trialPass || {};
+      const validDate = pass.validDate || todayStr;
+
+      if (todayStr > validDate) {
+        return res.status(200).json({
+          success: false,
+          accessGranted: false,
+          accessStatus: 'denied',
+          alertType: 'error',
+          isGuestPass: true,
+          message: `🔴 Guest Pass Expired: ${lead.name}'s 1-Day Trial Pass expired on ${validDate}. Invite to join!`,
+          customer: {
+            name: `${lead.name} (Guest Lead)`,
+            customerId: lead.leadId,
+            currentStatus: 'expired_pass',
+            planName: '1-Day Free Trial Pass'
+          }
+        });
+      }
+
+      // Check if trial pass was already redeemed on a previous date
+      if (pass.isUsed && pass.usedAt && !pass.usedAt.startsWith(todayStr)) {
+        const usedDateStr = pass.usedAt.split('T')[0];
+        return res.status(200).json({
+          success: false,
+          accessGranted: false,
+          accessStatus: 'denied',
+          alertType: 'warning',
+          isGuestPass: true,
+          message: `⚠️ Guest Pass Already Used: ${lead.name}'s 1-Day Trial was redeemed on ${usedDateStr}. Ready to convert to membership!`,
+          customer: {
+            name: `${lead.name} (Guest Lead)`,
+            customerId: lead.leadId,
+            currentStatus: 'trial_completed',
+            planName: '1-Day Free Trial Pass (Used)'
+          }
+        });
+      }
+
+      // Check if guest already scanned in today
+      const alreadyCheckedInToday = db.attendance.findOne({
+        gymId,
+        customerId: lead.leadId,
+        date: todayStr
+      });
+
+      if (alreadyCheckedInToday) {
+        return res.status(200).json({
+          success: true,
+          accessGranted: true,
+          accessStatus: 'already_checked_in',
+          alertType: 'info',
+          isGuestPass: true,
+          message: `ℹ️ Guest Already In Studio: ${lead.name} is currently enjoying their 1-Day Free Workout (Checked in at ${alreadyCheckedInToday.time}).`,
+          customer: {
+            name: `${lead.name} (Guest Lead)`,
+            customerId: lead.leadId,
+            currentStatus: 'active_today',
+            planName: 'Free 1-Day Trial Pass'
+          },
+          checkInRecord: alreadyCheckedInToday
+        });
+      }
+
+      // Mark pass redeemed
+      const firstTimeRedeemed = !pass.isUsed;
+      db.leads.updateOne(
+        { _id: lead._id },
+        {
+          status: 'trial_completed',
+          trialPass: {
+            ...pass,
+            isUsed: true,
+            usedAt: pass.usedAt || now.toISOString()
+          },
+          history: [
+            ...(lead.history || []),
+            {
+              date: now.toISOString(),
+              type: 'visit',
+              note: `Guest checked in at reception with 1-Day Trial Pass (${pass.passCode}).`
+            }
+          ]
+        }
+      );
+
+      // Create attendance check-in record
+      const checkInRecord = db.attendance.insertOne({
+        gymId,
+        customerId: lead.leadId,
+        customerName: `${lead.name} (Guest Lead)`,
+        customerPhone: lead.phone,
+        profilePhoto: '',
+        planName: 'Free 1-Day Trial Pass',
+        planExpiry: validDate,
+        membershipStatus: 'guest_trial',
+        accessGranted: true,
+        accessStatus: 'guest_granted',
+        outstandingBalance: 0,
+        source,
+        date: todayStr,
+        time: timeStr,
+        checkInTime: now.toISOString(),
+        checkInHour,
+        checkedInBy: user.name || 'Reception Desk'
+      });
+
+      // Update studio floor live occupancy
+      const gym = db.gyms.findById(gymId);
+      const currentOccupancy = gym?.settings?.occupancy?.currentMembers || 0;
+      const updatedMembers = Math.max(0, currentOccupancy + 1);
+
+      db.gyms.updateOne(
+        { _id: gymId },
+        {
+          settings: {
+            ...(gym?.settings || {}),
+            occupancy: {
+              ...(gym?.settings?.occupancy || {}),
+              currentMembers: updatedMembers
+            }
+          }
+        }
+      );
+
+      return res.json({
+        success: true,
+        accessGranted: true,
+        accessStatus: 'granted',
+        alertType: 'success',
+        isGuestPass: true,
+        message: `🟢 Guest Access Granted! Welcome to ${lead.name} for their Free 1-Day Workout! 💪`,
+        customer: {
+          name: `${lead.name} (Guest Lead)`,
+          customerId: lead.leadId,
+          currentStatus: 'active',
+          planName: 'Free 1-Day Trial Pass',
+          daysRemaining: 1,
+          outstandingBalance: 0
+        },
+        currentMembership: {
+          planName: 'Free 1-Day Trial Pass',
+          endDate: validDate
+        },
+        checkInRecord,
+        liveOccupancy: {
+          currentMembers: updatedMembers,
+          maxCapacity: gym?.settings?.occupancy?.maxCapacity || 50
+        }
+      });
+    }
+
     // Locate customer by customerId, _id, or phone
     const allCustomers = db.customers.find({ gymId });
     const customer = allCustomers.find(c => {
@@ -36,15 +201,11 @@ router.post('/check-in', (req, res) => {
         success: false,
         accessGranted: false,
         accessStatus: 'not_found',
-        message: `No member record found for identifier: "${cleanInput}". Please check the ID or register customer.`
+        message: `No member or guest pass record found for identifier: "${cleanInput}". Please check the ID or register inquiry.`
       });
     }
 
     const enriched = enrichCustomer(customer, gymId);
-    const now = new Date();
-    const todayStr = now.toISOString().split('T')[0];
-    const timeStr = now.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', hour12: true });
-    const checkInHour = now.getHours();
 
     let accessGranted = false;
     let accessStatus = 'denied';

@@ -40,5 +40,19 @@
     "createdAt": "2026-11-26T07:00:44.860Z",
     "_id": "id_1795676444860_hsi8sj",
     "updatedAt": "2026-11-26T07:00:44.860Z"
+  },
+  {
+    "gymId": "gym_fitzone_01",
+    "customerId": "FIT-1001",
+    "planName": "3 Months Muscle Transformation",
+    "startDate": "2026-11-26",
+    "endDate": "2027-02-24",
+    "amount": 4500,
+    "status": "active",
+    "notes": "Initial membership upon conversion from lead (LEAD-101)",
+    "createdBy": "Vikram Singhania",
+    "createdAt": "2026-11-26T07:49:26.147Z",
+    "_id": "id_1795679366147_1srirj",
+    "updatedAt": "2026-11-26T07:49:26.147Z"
   }
 ]

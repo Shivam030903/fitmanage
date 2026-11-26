@@ -30,5 +30,22 @@
     "notes": "",
     "createdAt": "2026-11-18T17:16:08.303Z",
     "updatedAt": "2026-11-18T17:16:08.303Z"
+  },
+  {
+    "gymId": "gym_fitzone_01",
+    "customerId": "FIT-1001",
+    "name": "Aman Sharma",
+    "gender": "Male",
+    "dateOfBirth": "",
+    "profilePhoto": "",
+    "contacts": {
+      "primary": "9876543210"
+    },
+    "address": "",
+    "notes": "Converted from walk-in lead (LEAD-101). Goal: Muscle Building. Notes: None",
+    "convertedFromLeadId": "LEAD-101",
+    "createdAt": "2026-11-26T07:49:26.145Z",
+    "_id": "id_1795679366146_wfo3yc",
+    "updatedAt": "2026-11-26T07:49:26.146Z"
   }
 ]

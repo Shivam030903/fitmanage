@@ -249,7 +249,8 @@ export const db = {
   reminderLogs: new MongoCollection('reminderLogs'),
   plans: new MongoCollection('plans'),
   attendance: new MongoCollection('attendance'),
-  subscriptions: new MongoCollection('subscriptions')
+  subscriptions: new MongoCollection('subscriptions'),
+  leads: new MongoCollection('leads')
 };
 
 export const SAAS_PLANS = {

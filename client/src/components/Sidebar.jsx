@@ -14,7 +14,8 @@ import {
   Dumbbell,
   QrCode,
   ExternalLink,
-  Sparkles
+  Sparkles,
+  Target
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -31,6 +32,7 @@ export default function Sidebar() {
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/attendance', label: 'Check-in & QR', icon: QrCode, badge: 'Live' },
     { to: '/customers', label: 'Customers', icon: Users },
+    { to: '/leads', label: 'Leads & CRM', icon: Target, badge: '60% 🚀' },
     { to: '/customers/new', label: 'Add Customer', icon: UserPlus },
     { to: '/memberships', label: 'Memberships', icon: Dumbbell },
     { to: '/renewals', label: 'Renewals', icon: RefreshCw },

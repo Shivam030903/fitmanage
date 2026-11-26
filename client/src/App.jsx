@@ -24,6 +24,7 @@ import Attendance from './pages/Attendance';
 import PublicPayment from './pages/PublicPayment';
 import Subscription from './pages/Subscription';
 import SuperAdmin from './pages/SuperAdmin';
+import Leads from './pages/Leads';
 
 function ProtectedLayout({ children, title }) {
   const { user, loading } = useAuth();
@@ -110,6 +111,12 @@ export default function App() {
           <Route path="/customers/new" element={
             <ProtectedLayout title="Register Member">
               <AddCustomer />
+            </ProtectedLayout>
+          } />
+
+          <Route path="/leads" element={
+            <ProtectedLayout title="Leads & Walk-in CRM">
+              <Leads />
             </ProtectedLayout>
           } />
 

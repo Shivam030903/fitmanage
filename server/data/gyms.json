@@ -24,10 +24,34 @@
         "expired": "Hello {customerName}!\nYour gym membership at {gymName} expired on {expiryDate}. We hope you enjoyed your fitness journey with us.\nWould you like to renew? We have special renewal benefits waiting for you! 🏋️‍♂️\nRegards, {gymName} Team",
         "paymentDue": "Hello {customerName}! 👋\nThis is a friendly reminder regarding your pending balance of ₹{pendingAmount} for your {planName} membership at {gymName}.\nPlease clear this at the reception desk. Thank you! 🙏",
         "welcome": "Welcome to {gymName}, {customerName}! 🎉\nYour {planName} membership is active until {expiryDate}.\nLet's achieve your fitness goals together! Feel free to ask our trainers anytime. 🚀"
+      },
+      "occupancy": {
+        "currentMembers": 2
       }
     },
     "createdAt": "2026-11-18T07:55:45.466Z",
-    "updatedAt": "2026-11-24T09:10:47.289Z"
+    "updatedAt": "2026-11-26T07:50:08.890Z",
+    "subscription": {
+      "plan": "starter",
+      "status": "active",
+      "billingCycle": "monthly",
+      "currentPeriodStart": "2026-11-26T07:30:34.824Z",
+      "currentPeriodEnd": "2026-12-26T07:30:34.824Z",
+      "amount": 799,
+      "lastPaymentDate": "2026-11-26T07:30:34.824Z",
+      "lastPaymentRef": "sub_pay_demo_234807",
+      "memberLimit": 100,
+      "staffLimit": 1,
+      "features": {
+        "whatsappQr": true,
+        "metaApi": false,
+        "multiStageAuto": false,
+        "attendanceScanner": false,
+        "unlimitedStaff": false
+      }
+    },
+    "isLocked": false,
+    "lockReason": ""
   },
   {
     "_id": "gym_1795008842889",

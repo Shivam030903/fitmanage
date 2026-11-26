@@ -63,5 +63,21 @@
     "createdAt": "2026-11-26T07:00:44.863Z",
     "_id": "id_1795676444863_zpim6b",
     "updatedAt": "2026-11-26T07:00:44.863Z"
+  },
+  {
+    "gymId": "gym_fitzone_01",
+    "customerId": "FIT-1001",
+    "membershipId": "id_1795679366147_1srirj",
+    "totalAmount": 4500,
+    "amountPaid": 4500,
+    "pendingAmount": 0,
+    "paymentMethod": "UPI",
+    "paymentDate": "2026-11-26",
+    "transactionReference": "PAY-366148",
+    "notes": "Joining membership payment cleared upfront",
+    "receivedBy": "Vikram Singhania",
+    "createdAt": "2026-11-26T07:49:26.148Z",
+    "_id": "id_1795679366148_gi59ek",
+    "updatedAt": "2026-11-26T07:49:26.148Z"
   }
 ]
