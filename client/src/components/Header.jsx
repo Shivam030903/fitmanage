@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Download, Dumbbell, Bell, MoreVertical, LogOut, Settings, ShieldCheck, RefreshCw, User } from 'lucide-react';
+import { Search, Download, Dumbbell, Bell, MoreVertical, LogOut, Settings, ShieldCheck, RefreshCw, User, QrCode } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Header({ title, onInstallClick, isInstallable }) {
@@ -89,6 +89,16 @@ export default function Header({ title, onInstallClick, isInstallable }) {
           />
           <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
         </form>
+
+        {/* Quick Check-in Button */}
+        <button
+          onClick={() => navigate('/attendance')}
+          className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 border border-emerald-200 text-xs font-bold transition-all shadow-sm"
+          title="Reception QR Attendance Scanner"
+        >
+          <QrCode className="w-3.5 h-3.5 text-emerald-600" />
+          <span className="hidden sm:inline">Check-in</span>
+        </button>
 
         {/* PWA Install Button */}
         <button

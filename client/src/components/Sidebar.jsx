@@ -28,6 +28,7 @@ export default function Sidebar() {
 
   const navItems = [
     { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { to: '/attendance', label: 'Check-in & QR', icon: QrCode, badge: 'Live' },
     { to: '/customers', label: 'Customers', icon: Users },
     { to: '/customers/new', label: 'Add Customer', icon: UserPlus },
     { to: '/memberships', label: 'Memberships', icon: Dumbbell },

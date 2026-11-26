@@ -59,6 +59,7 @@ export default function WhatsAppModal({ isOpen, onClose, customer, initialTempla
     ? new Date(customer.currentMembership.endDate).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
     : 'Upcoming';
   const daysRemaining = customer.daysRemaining !== undefined ? customer.daysRemaining : 0;
+  const renewalLink = `${window.location.origin}/pay/${customer.customerId}`;
 
   // Custom gym template hydration
   const customTemplates = gym?.settings?.whatsappTemplates || {};
@@ -70,11 +71,12 @@ export default function WhatsAppModal({ isOpen, onClose, customer, initialTempla
       .replace(/{planName}/g, planName)
       .replace(/{expiryDate}/g, expiryDate)
       .replace(/{daysRemaining}/g, String(daysRemaining))
-      .replace(/{customerId}/g, customer.customerId || '');
+      .replace(/{customerId}/g, customer.customerId || '')
+      .replace(/{renewalLink}/g, renewalLink);
   };
 
-  const defaultExpiringSoon = `Hello {customerName}! 👋\n\nYour gym membership at {gymName} is expiring on {expiryDate} ({daysRemaining} days left).\n\nWe would love to continue having you with us! Please contact us or visit the reception to renew your membership.\n\nThank you for being a part of our fitness family! 💪`;
-  const defaultExpired = `Hello {customerName}!\n\nYour gym membership at {gymName} has expired. We hope you enjoyed your fitness journey with us.\n\nWould you like to renew your membership? We have exciting renewal benefits waiting for you at the front desk.\n\nRegards,\n{gymName} Team 🏋️‍♂️`;
+  const defaultExpiringSoon = `Hello {customerName}! 👋\n\nYour gym membership at {gymName} is expiring on {expiryDate} ({daysRemaining} days left).\n\nRenew early to maintain uninterrupted access and smash your fitness goals! 💪\n\n⚡ Instant Online Renewal: {renewalLink}\n\nThank you for being a part of our fitness family!\n_{gymName}_`;
+  const defaultExpired = `Hello {customerName}!\n\nYour gym membership at {gymName} has expired. We hope you enjoyed your fitness journey with us.\n\nWould you like to reactivate your membership? We have special renewal benefits waiting for you:\n\n⚡ Click to Renew Online: {renewalLink}\n\nRegards,\n_{gymName} Team_ 🏋️‍♂️`;
   const defaultWelcome = `Welcome to {gymName}, {customerName}! 🎉\n\nYour {planName} membership is active until {expiryDate}.\n\nLet's smash your fitness goals! If you need any assistance with equipment or workout plans, our trainers are always here to help. 🚀`;
 
   const templates = {
@@ -291,13 +293,33 @@ export default function WhatsAppModal({ isOpen, onClose, customer, initialTempla
           </div>
 
           {templateType === 'custom' ? (
-            <textarea
-              rows={5}
-              placeholder="Type your custom WhatsApp message here..."
-              value={customText}
-              onChange={(e) => setCustomText(e.target.value)}
-              className="w-full text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 font-sans"
-            />
+            <div className="space-y-2">
+              <div className="flex flex-wrap gap-1.5 items-center">
+                <span className="text-[10px] text-slate-400 font-semibold">Insert tag:</span>
+                {[
+                  { label: '+ Member Name', tag: '{customerName}' },
+                  { label: '+ Expiry Date', tag: '{expiryDate}' },
+                  { label: '+ Plan Name', tag: '{planName}' },
+                  { label: '+ Renewal Link', tag: '{renewalLink}' }
+                ].map((item) => (
+                  <button
+                    key={item.tag}
+                    type="button"
+                    onClick={() => setCustomText((prev) => prev + (prev ? ' ' : '') + item.tag)}
+                    className="px-2 py-0.5 rounded-lg bg-slate-100 hover:bg-emerald-50 hover:text-emerald-700 text-slate-600 text-[10px] font-medium transition-colors"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+              <textarea
+                rows={5}
+                placeholder="Type your custom WhatsApp message here..."
+                value={customText}
+                onChange={(e) => setCustomText(e.target.value)}
+                className="w-full text-xs p-3 rounded-xl border border-slate-200 focus:outline-none focus:border-emerald-500 font-sans"
+              />
+            </div>
           ) : (
             <div className="p-3 bg-emerald-50/50 border border-emerald-100 rounded-xl text-xs text-slate-800 whitespace-pre-line font-sans max-h-40 overflow-y-auto leading-relaxed">
               {currentMessage}

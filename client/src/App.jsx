@@ -19,6 +19,8 @@ import Reports from './pages/Reports';
 import Staff from './pages/Staff';
 import Settings from './pages/Settings';
 import Portal from './pages/Portal';
+import Attendance from './pages/Attendance';
+import PublicPayment from './pages/PublicPayment';
 
 function ProtectedLayout({ children, title }) {
   const { user, loading } = useAuth();
@@ -153,7 +155,15 @@ export default function App() {
             </ProtectedLayout>
           } />
 
+          <Route path="/attendance" element={
+            <ProtectedLayout title="Attendance & Check-in">
+              <Attendance />
+            </ProtectedLayout>
+          } />
+
           <Route path="/portal" element={<Portal />} />
+          <Route path="/pay/:token" element={<PublicPayment />} />
+          <Route path="/renew/:token" element={<PublicPayment />} />
           <Route path="*" element={<Navigate to="/dashboard" replace />} />
         </Routes>
       </BrowserRouter>

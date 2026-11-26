@@ -80,9 +80,12 @@
         "expired": "Hello {customerName}!\nYour gym membership at {gymName} has expired. We hope you enjoyed your fitness journey with us.\nWould you like to renew your membership? We would be happy to help you get started again.\nRegards, {gymName} Team",
         "paymentDue": "Hello {customerName}! 👋\nFriendly reminder regarding your pending balance of ₹{pendingAmount} for your gym membership at {gymName}.\nPlease clear this at the reception desk. Thank you! 🙏",
         "welcome": "Welcome to {gymName}, {customerName}! 🎉\nYour membership is active until {expiryDate}.\nLet's crush your fitness goals! 🚀"
+      },
+      "occupancy": {
+        "currentMembers": 1
       }
     },
     "createdAt": "2026-11-18T17:09:08.196Z",
-    "updatedAt": "2026-11-18T17:09:08.196Z"
+    "updatedAt": "2026-11-26T07:05:18.975Z"
   }
 ]

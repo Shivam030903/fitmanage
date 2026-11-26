@@ -26,5 +26,22 @@
     "createdBy": "Vikram Singhania",
     "createdAt": "2026-11-24T09:37:22.398Z",
     "updatedAt": "2026-11-24T09:37:22.398Z"
+  },
+  {
+    "gymId": "gym_1795021748195",
+    "customerId": "FIT-1001",
+    "membershipId": "id_1795676444860_hsi8sj",
+    "contactNumber": "919212151697",
+    "reminderType": "renewal_confirmation",
+    "message": "🎉 *Payment Received & Membership Confirmed!*\n\nHi Shivam Jain! 👋\n\nYour online payment of *₹1,500* for *Monthly Standard* has been successfully processed.\n\n📄 *Receipt Ref:* PAY-ONL-444862\n🗓 *New Expiry Date:* 19 Mar 2027\n💳 *Payment Method:* Razorpay\n\nThank you for choosing iron fitness! Your uninterrupted gym access is ready. Keep pushing your fitness boundaries! 💪🏋️\n\n_iron fitness_",
+    "status": "DEVICE_NOT_LINKED",
+    "deliveryMode": "AUTOMATED_BACKGROUND",
+    "provider": "whatsapp_qr",
+    "deliveryDetails": "WhatsApp device for iron fitness is not linked. Please scan QR code in Settings.",
+    "sentAt": "2026-11-26T07:00:44.894Z",
+    "createdBy": "Online Payment Gateway",
+    "_id": "id_1795676444894_7abtzo",
+    "createdAt": "2026-11-26T07:00:44.894Z",
+    "updatedAt": "2026-11-26T07:00:44.894Z"
   }
 ]

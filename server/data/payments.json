@@ -44,5 +44,24 @@
     "receivedBy": "shivam jain",
     "createdAt": "2026-11-18T17:20:17.601Z",
     "updatedAt": "2026-11-18T17:20:17.601Z"
+  },
+  {
+    "gymId": "gym_1795021748195",
+    "customerId": "FIT-1001",
+    "membershipId": "id_1795676444860_hsi8sj",
+    "totalAmount": 1500,
+    "amountPaid": 1500,
+    "pendingAmount": 0,
+    "paymentMethod": "Razorpay",
+    "paymentDate": "2026-11-26",
+    "transactionReference": "PAY-ONL-444862",
+    "gatewayPaymentId": null,
+    "gatewayOrderId": null,
+    "upiReference": null,
+    "notes": "Online self-service payment (Monthly Standard)",
+    "receivedBy": "Online Portal Gateway",
+    "createdAt": "2026-11-26T07:00:44.863Z",
+    "_id": "id_1795676444863_zpim6b",
+    "updatedAt": "2026-11-26T07:00:44.863Z"
   }
 ]

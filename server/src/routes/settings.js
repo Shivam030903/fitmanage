@@ -36,8 +36,20 @@ router.get('/', (req, res) => {
     const gym = db.gyms.findById(gymId);
     const plans = db.plans.find({ gymId });
 
+    const safeGym = {
+      ...gym,
+      settings: {
+        ...(gym?.settings || {}),
+        paymentGateway: {
+          ...(gym?.settings?.paymentGateway || {}),
+          hasRazorpaySecret: Boolean(gym?.settings?.paymentGateway?.razorpayKeySecret),
+          razorpayKeySecret: gym?.settings?.paymentGateway?.razorpayKeySecret ? '••••••••••••••••' : ''
+        }
+      }
+    };
+
     res.json({
-      gym,
+      gym: safeGym,
       plans
     });
   } catch (err) {
@@ -88,6 +100,14 @@ router.put('/profile', roleCheck(['owner', 'admin']), (req, res) => {
           occupancy: {
             ...(existing.settings?.occupancy || {}),
             ...(settings?.occupancy || {})
+          },
+          paymentGateway: {
+            ...(existing.settings?.paymentGateway || {}),
+            ...(settings?.paymentGateway || {}),
+            // Preserve secret if user didn't change it or submitted masked value
+            razorpayKeySecret: (settings?.paymentGateway?.razorpayKeySecret && !settings.paymentGateway.razorpayKeySecret.includes('•'))
+              ? settings.paymentGateway.razorpayKeySecret
+              : (existing.settings?.paymentGateway?.razorpayKeySecret || '')
           }
         }
       }

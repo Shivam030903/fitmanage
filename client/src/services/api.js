@@ -136,4 +136,18 @@ export const api = {
       return data;
     });
   },
+
+  // Attendance & Check-in Scanner
+  checkInMember: (data) => request('/attendance/check-in', { method: 'POST', body: JSON.stringify(data) }),
+  getAttendance: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return request(`/attendance?${q}`);
+  },
+  getAttendanceStats: () => request('/attendance/stats'),
+  deleteAttendanceRecord: (id) => request(`/attendance/${id}`, { method: 'DELETE' }),
+
+  // Online Renewal & Payment Gateway
+  getOnlinePayDetails: (token) => request(`/online-pay/${token}`),
+  createOnlineOrder: (data) => request('/online-pay/create-order', { method: 'POST', body: JSON.stringify(data) }),
+  verifyOnlinePayment: (data) => request('/online-pay/verify', { method: 'POST', body: JSON.stringify(data) }),
 };

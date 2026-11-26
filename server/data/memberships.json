@@ -24,5 +24,21 @@
     "createdBy": "shivam jain",
     "createdAt": "2026-11-18T17:16:08.304Z",
     "updatedAt": "2026-11-18T17:16:08.304Z"
+  },
+  {
+    "gymId": "gym_1795021748195",
+    "customerId": "FIT-1001",
+    "planName": "Monthly Standard",
+    "startDate": "2027-02-17",
+    "endDate": "2027-03-19",
+    "amount": 1500,
+    "status": "active",
+    "isRenewal": true,
+    "renewedFrom": "id_1795021785828_sozw4d",
+    "notes": "Online self-renewal (Razorpay Demo)",
+    "createdBy": "Online Self-Checkout",
+    "createdAt": "2026-11-26T07:00:44.860Z",
+    "_id": "id_1795676444860_hsi8sj",
+    "updatedAt": "2026-11-26T07:00:44.860Z"
   }
 ]

@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Settings as SettingsIcon, Dumbbell, MessageSquare, Plus, Trash2, CheckCircle2, Zap, QrCode, Smartphone, RefreshCw, Clock, Radio, Megaphone, Users, Activity, BarChart2, Calendar, AlertCircle, Send, Edit2, Cloud, ShieldCheck, Key, Globe } from 'lucide-react';
+import { Settings as SettingsIcon, Dumbbell, MessageSquare, Plus, Trash2, CheckCircle2, Zap, QrCode, Smartphone, RefreshCw, Clock, Radio, Megaphone, Users, Activity, BarChart2, Calendar, AlertCircle, Send, Edit2, Cloud, ShieldCheck, Key, Globe, CreditCard, Link2, Eye, EyeOff, ExternalLink, Copy } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
 
@@ -53,6 +53,20 @@ export default function Settings() {
   const [testingMeta, setTestingMeta] = useState(false);
   const [metaTestResult, setMetaTestResult] = useState(null);
   const [metaTestPhone, setMetaTestPhone] = useState('');
+
+  // Online Payment Gateway & Self-Renewal State
+  const [pgEnabled, setPgEnabled] = useState(true);
+  const [razorpayEnabled, setRazorpayEnabled] = useState(false);
+  const [razorpayKeyId, setRazorpayKeyId] = useState('');
+  const [razorpayKeySecret, setRazorpayKeySecret] = useState('');
+  const [hasRazorpaySecret, setHasRazorpaySecret] = useState(false);
+  const [showSecret, setShowSecret] = useState(false);
+  const [upiEnabled, setUpiEnabled] = useState(true);
+  const [upiId, setUpiId] = useState('');
+  const [upiName, setUpiName] = useState('');
+  const [allowPlanRenewal, setAllowPlanRenewal] = useState(true);
+  const [allowCustomDues, setAllowCustomDues] = useState(true);
+  const [copiedLink, setCopiedLink] = useState(false);
 
   const [savingProfile, setSavingProfile] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
@@ -174,6 +188,18 @@ export default function Settings() {
         if (occ.slots && Array.isArray(occ.slots) && occ.slots.length > 0) {
           setOccupancySlots(occ.slots);
         }
+        // Payment Gateway
+        const pg = res.gym.settings?.paymentGateway || {};
+        setPgEnabled(pg.enabled !== false);
+        setRazorpayEnabled(Boolean(pg.razorpayEnabled));
+        setRazorpayKeyId(pg.razorpayKeyId || '');
+        setRazorpayKeySecret(pg.razorpayKeySecret || '');
+        setHasRazorpaySecret(Boolean(pg.hasRazorpaySecret));
+        setUpiEnabled(pg.upiEnabled !== false);
+        setUpiId(pg.upiId || '');
+        setUpiName(pg.upiName || res.gym.gymName || '');
+        setAllowPlanRenewal(pg.allowPlanRenewal !== false);
+        setAllowCustomDues(pg.allowCustomDues !== false);
       }
       setPlans(res.plans || []);
     } catch (err) {
@@ -278,6 +304,17 @@ export default function Settings() {
             maxCapacity: Number(maxCapacity) || 50,
             currentMembers: Number(currentMembers) || 0,
             slots: occupancySlots
+          },
+          paymentGateway: {
+            enabled: pgEnabled,
+            razorpayEnabled,
+            razorpayKeyId: razorpayKeyId.trim(),
+            razorpayKeySecret: razorpayKeySecret.trim(),
+            upiEnabled,
+            upiId: upiId.trim(),
+            upiName: upiName.trim(),
+            allowPlanRenewal,
+            allowCustomDues
           }
         }
       });
@@ -1229,7 +1266,247 @@ export default function Settings() {
           </div>
         </div>
 
-        {/* 5. WhatsApp Message Templates */}
+        {/* 5. Online Payment Gateway & Click-to-Renew Links */}
+        <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm space-y-6">
+          <div className="border-b border-slate-100 pb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-2">
+                <CreditCard className="w-4 h-4 text-emerald-600" />
+                <span>Online Payment Gateway & Click-to-Renew Links</span>
+              </h2>
+              <p className="text-xs text-slate-400">
+                Allow members to renew their membership or settle dues online via Razorpay or direct UPI links.
+              </p>
+            </div>
+            <label className="flex items-center space-x-2 cursor-pointer bg-slate-50 px-3 py-1.5 rounded-xl border border-slate-200 self-start sm:self-auto">
+              <input
+                type="checkbox"
+                checked={pgEnabled}
+                onChange={(e) => setPgEnabled(e.target.checked)}
+                className="w-4 h-4 text-emerald-600 rounded"
+              />
+              <span className="text-xs font-bold text-slate-800">Enable Online Renewals</span>
+            </label>
+          </div>
+
+          {pgEnabled && (
+            <div className="space-y-6 text-xs">
+              {/* Feature checkboxes */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 p-3.5 bg-slate-50 rounded-xl border border-slate-200/70">
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={allowPlanRenewal}
+                    onChange={(e) => setAllowPlanRenewal(e.target.checked)}
+                    className="w-4 h-4 text-emerald-600 rounded"
+                  />
+                  <span className="font-semibold text-slate-700">Allow Members to Pick Renewal Plans</span>
+                </label>
+                <label className="flex items-center space-x-2 cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={allowCustomDues}
+                    onChange={(e) => setAllowCustomDues(e.target.checked)}
+                    className="w-4 h-4 text-emerald-600 rounded"
+                  />
+                  <span className="font-semibold text-slate-700">Allow Members to Clear Outstanding Dues</span>
+                </label>
+              </div>
+
+              {/* Two Gateway Options: Razorpay vs Direct UPI */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                {/* 1. Razorpay Gateway */}
+                <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-sm space-y-3 flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-7 h-7 rounded-lg bg-blue-50 text-blue-600 font-bold flex items-center justify-center text-xs">
+                          ⚡
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-900">Razorpay Payment Gateway</p>
+                          <p className="text-[10px] text-slate-400">Cards, Netbanking, UPI, Wallets</p>
+                        </div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={razorpayEnabled}
+                        onChange={(e) => setRazorpayEnabled(e.target.checked)}
+                        className="w-4 h-4 text-emerald-600 rounded cursor-pointer"
+                      />
+                    </div>
+
+                    {razorpayEnabled && (
+                      <div className="space-y-3 pt-2 border-t border-slate-100">
+                        <div>
+                          <label className="block font-semibold text-slate-700 mb-1">
+                            Razorpay Key ID
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="rzp_live_... or rzp_test_..."
+                            value={razorpayKeyId}
+                            onChange={(e) => setRazorpayKeyId(e.target.value)}
+                            className="w-full p-2.5 rounded-xl border border-slate-200 font-mono text-xs"
+                          />
+                        </div>
+
+                        <div>
+                          <div className="flex items-center justify-between mb-1">
+                            <label className="block font-semibold text-slate-700">
+                              Razorpay Key Secret
+                            </label>
+                            {hasRazorpaySecret && (
+                              <span className="text-[10px] font-bold text-emerald-600 flex items-center space-x-1">
+                                <CheckCircle2 className="w-3 h-3" />
+                                <span>Key Saved</span>
+                              </span>
+                            )}
+                          </div>
+                          <div className="relative">
+                            <input
+                              type={showSecret ? "text" : "password"}
+                              placeholder={hasRazorpaySecret ? "••••••••••••••••" : "Paste secret key here"}
+                              value={razorpayKeySecret}
+                              onChange={(e) => setRazorpayKeySecret(e.target.value)}
+                              className="w-full p-2.5 pr-9 rounded-xl border border-slate-200 font-mono text-xs"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowSecret(!showSecret)}
+                              className="absolute right-2.5 top-2.5 text-slate-400 hover:text-slate-600"
+                            >
+                              {showSecret ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                            </button>
+                          </div>
+                          <p className="text-[10px] text-slate-400 mt-1">
+                            FitManage uses cryptographic 256-bit HMAC signatures to automatically renew memberships upon payment.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-2 text-[10px] text-slate-400 flex items-center justify-between border-t border-slate-100">
+                    <span>Zero manual intervention</span>
+                    <a 
+                      href="https://dashboard.razorpay.com/app/keys" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="text-blue-600 hover:underline flex items-center space-x-0.5"
+                    >
+                      <span>Razorpay Keys</span>
+                      <ExternalLink className="w-3 h-3" />
+                    </a>
+                  </div>
+                </div>
+
+                {/* 2. Direct Instant UPI */}
+                <div className="p-4 rounded-xl border border-slate-200 bg-white shadow-sm space-y-3 flex flex-col justify-between">
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center space-x-2">
+                        <div className="w-7 h-7 rounded-lg bg-emerald-50 text-emerald-600 font-bold flex items-center justify-center text-xs">
+                          📱
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-900">Direct Instant UPI</p>
+                          <p className="text-[10px] text-slate-400">GPay, PhonePe, Paytm, BHIM</p>
+                        </div>
+                      </div>
+                      <input
+                        type="checkbox"
+                        checked={upiEnabled}
+                        onChange={(e) => setUpiEnabled(e.target.checked)}
+                        className="w-4 h-4 text-emerald-600 rounded cursor-pointer"
+                      />
+                    </div>
+
+                    {upiEnabled && (
+                      <div className="space-y-3 pt-2 border-t border-slate-100">
+                        <div>
+                          <label className="block font-semibold text-slate-700 mb-1">
+                            Gym UPI ID / VPA
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. gymname@okaxis or 9876543210@paytm"
+                            value={upiId}
+                            onChange={(e) => setUpiId(e.target.value)}
+                            className="w-full p-2.5 rounded-xl border border-slate-200 font-mono text-xs"
+                          />
+                        </div>
+
+                        <div>
+                          <label className="block font-semibold text-slate-700 mb-1">
+                            UPI Payee Name (Displayed in UPI App)
+                          </label>
+                          <input
+                            type="text"
+                            placeholder="e.g. Fitness Hub Studio"
+                            value={upiName}
+                            onChange={(e) => setUpiName(e.target.value)}
+                            className="w-full p-2.5 rounded-xl border border-slate-200 text-xs"
+                          />
+                          <p className="text-[10px] text-slate-400 mt-1">
+                            Members clicking the renewal link on their phone can tap "Open UPI App" or scan the QR code to pay instantly.
+                          </p>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="pt-2 text-[10px] text-slate-400 flex items-center justify-between border-t border-slate-100">
+                    <span>Direct settlement to bank</span>
+                    <span className="font-mono text-emerald-600 font-semibold">0% Platform Fee</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Public Renewal Link Preview */}
+              <div className="p-4 bg-emerald-50/60 rounded-xl border border-emerald-200 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div className="space-y-1">
+                  <p className="font-bold text-emerald-950 flex items-center space-x-1.5">
+                    <Link2 className="w-4 h-4 text-emerald-700" />
+                    <span>Self-Service Member Renewal URL Format</span>
+                  </p>
+                  <p className="text-[11px] text-emerald-800">
+                    Use placeholder <code className="bg-white/80 px-1 py-0.5 rounded font-mono font-bold text-emerald-900">{'{renewalLink}'}</code> in WhatsApp reminders.
+                  </p>
+                  <p className="font-mono text-[11px] text-slate-600 bg-white/90 p-1.5 rounded-lg border border-emerald-100 break-all select-all">
+                    {window.location.origin}/pay/FIT-1001
+                  </p>
+                </div>
+
+                <div className="flex items-center space-x-2 self-start sm:self-auto shrink-0">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      navigator.clipboard.writeText(`${window.location.origin}/pay/FIT-1001`);
+                      setCopiedLink(true);
+                      setTimeout(() => setCopiedLink(false), 2000);
+                    }}
+                    className="px-3 py-2 rounded-xl bg-white hover:bg-slate-50 text-slate-700 font-bold text-xs flex items-center space-x-1 border border-slate-200 shadow-sm"
+                  >
+                    {copiedLink ? <CheckCircle2 className="w-3.5 h-3.5 text-emerald-600" /> : <Copy className="w-3.5 h-3.5" />}
+                    <span>{copiedLink ? 'Copied!' : 'Copy Sample'}</span>
+                  </button>
+                  <a
+                    href="/pay/FIT-1001"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="px-3.5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs flex items-center space-x-1 shadow-sm"
+                  >
+                    <span>Test Checkout</span>
+                    <ExternalLink className="w-3.5 h-3.5" />
+                  </a>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* 6. WhatsApp Message Templates */}
         <div className="bg-white rounded-2xl p-6 border border-slate-200/80 shadow-sm space-y-4">
           <div className="border-b border-slate-100 pb-3">
             <h2 className="text-sm font-bold text-slate-900 uppercase tracking-wider flex items-center space-x-2">
@@ -1237,7 +1514,7 @@ export default function Settings() {
               <span>WhatsApp Message Templates</span>
             </h2>
             <p className="text-xs text-slate-400">
-              Customize dynamic messages. Placeholders supported: <code>{'{customerName}'}</code>, <code>{'{gymName}'}</code>, <code>{'{planName}'}</code>, <code>{'{expiryDate}'}</code>, <code>{'{daysRemaining}'}</code>.
+              Customize dynamic messages. Placeholders supported: <code>{'{customerName}'}</code>, <code>{'{gymName}'}</code>, <code>{'{planName}'}</code>, <code>{'{expiryDate}'}</code>, <code>{'{daysRemaining}'}</code>, <code>{'{renewalLink}'}</code>.
             </p>
           </div>
 

@@ -247,7 +247,8 @@ export const db = {
   memberships: new MongoCollection('memberships'),
   payments: new MongoCollection('payments'),
   reminderLogs: new MongoCollection('reminderLogs'),
-  plans: new MongoCollection('plans')
+  plans: new MongoCollection('plans'),
+  attendance: new MongoCollection('attendance')
 };
 
 export function getMongoDb() {

@@ -11,7 +11,8 @@ import {
   Settings, 
   ShieldCheck,
   LogOut,
-  RefreshCw
+  RefreshCw,
+  QrCode
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -65,6 +66,17 @@ export default function MobileBottomNav() {
             </div>
 
             <div className="grid grid-cols-2 gap-2">
+              <NavLink
+                to="/attendance"
+                onClick={() => setShowMoreMenu(false)}
+                className="flex items-center space-x-3 p-3 rounded-xl bg-slate-50 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 font-medium text-xs transition-colors"
+              >
+                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600">
+                  <QrCode className="w-4 h-4" />
+                </div>
+                <span>Check-in & QR</span>
+              </NavLink>
+
               <NavLink
                 to="/reminders"
                 onClick={() => setShowMoreMenu(false)}

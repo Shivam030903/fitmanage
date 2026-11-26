@@ -1,0 +1,24 @@
+[
+  {
+    "gymId": "gym_1795021748195",
+    "customerId": "FIT-1001",
+    "customerName": "Shivam Jain",
+    "customerPhone": "9212151697",
+    "profilePhoto": "",
+    "planName": "Quarterly",
+    "planExpiry": "2027-02-17",
+    "membershipStatus": "active",
+    "accessGranted": true,
+    "accessStatus": "granted",
+    "outstandingBalance": 0,
+    "source": "reception_qr",
+    "date": "2026-11-26",
+    "time": "12:35 pm",
+    "checkInTime": "2026-11-26T07:05:18.971Z",
+    "checkInHour": 12,
+    "checkedInBy": "shivam jain",
+    "_id": "id_1795676718972_v4g7eq",
+    "createdAt": "2026-11-26T07:05:18.972Z",
+    "updatedAt": "2026-11-26T07:05:18.972Z"
+  }
+]

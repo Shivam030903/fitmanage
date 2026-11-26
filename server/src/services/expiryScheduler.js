@@ -18,25 +18,25 @@ export const DEFAULT_STAGE_CONFIG = {
       enabled: true,
       days: 7,
       label: '7 Days Before Expiry (Gentle Heads Up)',
-      template: 'Hello {customerName}! 👋\n\nA friendly reminder that your {planName} membership at {gymName} will expire in 7 days on {expiryDate}.\n\nRenew early to maintain uninterrupted access and keep crushing your fitness goals! If you need any help, our front desk team is ready to assist. 💪\n\n_{gymName}_\n_If already renewed, please ignore. Reply STOP to mute._'
+      template: 'Hello {customerName}! 👋\n\nA friendly reminder that your {planName} membership at {gymName} will expire in 7 days on {expiryDate}.\n\nRenew early to maintain uninterrupted access and keep crushing your fitness goals! If you need any help, our front desk team is ready to assist. 💪\n\n⚡ Quick Online Renewal: {renewalLink}\n\n_{gymName}_\n_If already renewed, please ignore. Reply STOP to mute._'
     },
     stage_1day: {
       enabled: true,
       days: 1,
       label: '1 Day Before Expiry (Renewal Offer)',
-      template: 'Hi {customerName}! ⏰\n\nYour gym membership at {gymName} expires TOMORROW ({expiryDate})!\n\nWe love having you in our fitness family! Renew today to lock in special renewal perks and keep your workout streak alive. 🏋️‍♂️\n\nDrop by reception or reply here to renew!\n_{gymName}_\n_If already renewed, please ignore._'
+      template: 'Hi {customerName}! ⏰\n\nYour gym membership at {gymName} expires TOMORROW ({expiryDate})!\n\nWe love having you in our fitness family! Renew today to lock in special renewal perks and keep your workout streak alive. 🏋️‍♂️\n\n⚡ Tap to Renew Online: {renewalLink}\n\nDrop by reception or click above to renew!\n_{gymName}_\n_If already renewed, please ignore._'
     },
     stage_expiry_day: {
       enabled: true,
       days: 0,
       label: 'On Expiry Day (Action Required)',
-      template: 'Important Notice, {customerName}! ⚠️\n\nYour {planName} membership at {gymName} expires TODAY ({expiryDate}).\n\nTo ensure uninterrupted gym access and continue your fitness journey without pause, please visit our front desk to renew today! 🚀\n\nStay fit, stay strong!\n_{gymName}_\n_If already renewed, please ignore._'
+      template: 'Important Notice, {customerName}! ⚠️\n\nYour {planName} membership at {gymName} expires TODAY ({expiryDate}).\n\nTo ensure uninterrupted gym access and continue your fitness journey without pause, please renew today! 🚀\n\n⚡ Click to Renew Instantly: {renewalLink}\n\nStay fit, stay strong!\n_{gymName}_\n_If already renewed, please ignore._'
     },
     stage_3days_after: {
       enabled: true,
       days: -3,
       label: '3 Days After Expiry (Comeback Discount)',
-      template: 'We miss seeing you, {customerName}! 🥺\n\nIt has been 3 days since your membership at {gymName} expired on {expiryDate}.\n\nDon\'t let your hard work fade away! We have a special "Welcome Back" renewal benefit waiting for you. Visit us today and let\'s get back on track! 💖💪\n\n_{gymName}_\n_Reply STOP to mute alerts._'
+      template: 'We miss seeing you, {customerName}! 🥺\n\nIt has been 3 days since your membership at {gymName} expired on {expiryDate}.\n\nDon\'t let your hard work fade away! We have a special "Welcome Back" renewal benefit waiting for you:\n\n⚡ Reactivate Your Plan: {renewalLink}\n\nVisit us today and let\'s get back on track! 💖💪\n\n_{gymName}_\n_Reply STOP to mute alerts._'
     }
   }
 };
@@ -145,12 +145,22 @@ export const expiryScheduler = {
             year: 'numeric'
           });
 
-          const messageText = (stage.template || '')
+          const appBaseUrl = process.env.APP_URL || gym.settings?.appUrl || 'https://fitmanage-p8bc.onrender.com';
+          const renewalLink = `${appBaseUrl}/pay/${customer.customerId}`;
+
+          let messageText = (stage.template || '')
             .replace(/{customerName}/g, customerName)
             .replace(/{gymName}/g, gymTitle)
             .replace(/{planName}/g, planName)
             .replace(/{expiryDate}/g, expiryDate)
-            .replace(/{customerId}/g, customer.customerId || '');
+            .replace(/{customerId}/g, customer.customerId || '')
+            .replace(/{renewalLink}/g, renewalLink);
+
+          // If template didn't include renewalLink and gym has online renewals enabled, append it
+          const pgConfig = gym.settings?.paymentGateway || {};
+          if (pgConfig.enabled !== false && !messageText.includes(renewalLink)) {
+            messageText += `\n\n⚡ Quick Online Renewal: ${renewalLink}`;
+          }
 
           console.log(`[Expiry Scheduler] Auto-dispatching ${stageKey} to ${customer.name} (+91 ${phone})...`);
 
