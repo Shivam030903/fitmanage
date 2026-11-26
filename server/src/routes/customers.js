@@ -1,5 +1,5 @@
 import express from 'express';
-import { db, calculateMembershipStatus, getDaysRemaining } from '../db.js';
+import { db, calculateMembershipStatus, getDaysRemaining, getCustomerCurrentMembership } from '../db.js';
 import { authMiddleware, roleCheck } from '../middleware/auth.js';
 import { whatsappService } from '../services/whatsapp.js';
 
@@ -25,11 +25,10 @@ function generateCustomerId(gymId) {
 
 // Helper to decorate customer with latest membership & payment balance
 export function enrichCustomer(customer, gymId) {
-  const memberships = db.memberships.find({ gymId, customerId: customer.customerId })
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const memberships = db.memberships.find({ gymId, customerId: customer.customerId });
 
-  // Find currently active / upcoming / most recent membership
-  const currentMembership = memberships[0] || null;
+  // Intelligently select current membership (active first, then upcoming, then most recently expired)
+  const currentMembership = getCustomerCurrentMembership(memberships);
 
   let currentStatus = 'unsubscribed';
   let daysRemaining = 0;
@@ -43,9 +42,10 @@ export function enrichCustomer(customer, gymId) {
     daysRemaining = getDaysRemaining(currentMembership.endDate);
   }
 
-  // Calculate payments & outstanding balance
+  // Calculate payments & outstanding balance (excluding cancelled memberships)
   const payments = db.payments.find({ gymId, customerId: customer.customerId });
-  const totalBilled = memberships.reduce((acc, m) => acc + (Number(m.amount) || 0), 0);
+  const nonCancelled = memberships.filter(m => m.status !== 'cancelled');
+  const totalBilled = nonCancelled.reduce((acc, m) => acc + (Number(m.amount) || 0), 0);
   const totalPaid = payments.reduce((acc, p) => acc + (Number(p.amountPaid) || 0), 0);
   const outstandingBalance = Math.max(0, totalBilled - totalPaid);
 

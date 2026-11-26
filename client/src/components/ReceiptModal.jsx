@@ -47,10 +47,16 @@ _${gymTitle}_`;
     setSendingReceipt(true);
     setReceiptFeedback('');
 
-    // Check if Direct WhatsApp is linked & send directly
+    // Check if Direct WhatsApp or Meta Cloud API is ready & send directly
     try {
-      const qrRes = await api.getWhatsAppQR().catch(() => null);
-      if (qrRes && qrRes.isConnected) {
+      const waConfig = gym?.settings?.whatsapp || {};
+      const isMeta = waConfig.provider === 'meta';
+      const isMetaReady = isMeta && Boolean(waConfig.meta?.phoneNumberId && waConfig.meta?.accessToken);
+
+      const qrRes = !isMeta ? await api.getWhatsAppQR().catch(() => null) : null;
+      const isReady = isMeta ? isMetaReady : Boolean(qrRes?.isConnected);
+
+      if (isReady) {
         const res = await api.logReminder({
           customerId: receipt.customer?.customerId,
           contactNumber: cleanNum,
@@ -60,13 +66,14 @@ _${gymTitle}_`;
         });
 
         if (res.result?.status === 'DELIVERED_AUTOMATIC') {
-          setReceiptFeedback(`Receipt sent directly via linked WhatsApp (+${qrRes.linkedPhone})!`);
+          const via = isMeta ? 'Meta Cloud API' : `linked WhatsApp (+${qrRes?.linkedPhone})`;
+          setReceiptFeedback(`Receipt sent directly via ${via}!`);
           setTimeout(() => setReceiptFeedback(''), 4000);
           return;
         }
       }
     } catch (e) {
-      console.warn('Direct receipt dispatch error, falling back to Web URL:', e);
+      console.warn('Automated receipt dispatch error, falling back to Web URL:', e);
     } finally {
       setSendingReceipt(false);
     }

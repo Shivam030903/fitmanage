@@ -55,6 +55,51 @@ export function getDaysRemaining(endDateStr) {
   return Math.ceil(diffTime / (1000 * 60 * 60 * 24));
 }
 
+// Helper to determine the true current membership (prioritizing active over upcoming/expired)
+export function getCustomerCurrentMembership(memberships) {
+  if (!memberships || memberships.length === 0) return null;
+
+  const now = new Date();
+  now.setHours(0, 0, 0, 0);
+
+  // 1. Look for currently active memberships (startDate <= today && today <= endDate && !cancelled)
+  const activeList = memberships.filter(m => {
+    if (m.status === 'cancelled') return false;
+    const s = new Date(m.startDate);
+    s.setHours(0, 0, 0, 0);
+    const e = new Date(m.endDate);
+    e.setHours(23, 59, 59, 999);
+    return s <= now && now <= e;
+  });
+
+  if (activeList.length > 0) {
+    // If multiple active, pick the one with the furthest endDate
+    return activeList.sort((a, b) => new Date(b.endDate) - new Date(a.endDate))[0];
+  }
+
+  // 2. If no active, look for upcoming future memberships (startDate > today && !cancelled)
+  const upcomingList = memberships.filter(m => {
+    if (m.status === 'cancelled') return false;
+    const s = new Date(m.startDate);
+    s.setHours(0, 0, 0, 0);
+    return s > now;
+  });
+
+  if (upcomingList.length > 0) {
+    // Pick nearest upcoming membership
+    return upcomingList.sort((a, b) => new Date(a.startDate) - new Date(b.startDate))[0];
+  }
+
+  // 3. Look for most recently ended non-cancelled membership
+  const pastList = memberships.filter(m => m.status !== 'cancelled');
+  if (pastList.length > 0) {
+    return pastList.sort((a, b) => new Date(b.endDate) - new Date(a.endDate))[0];
+  }
+
+  // 4. Fallback to newest membership even if cancelled
+  return [...memberships].sort((a, b) => new Date(b.createdAt || b.endDate) - new Date(a.createdAt || a.endDate))[0];
+}
+
 let mongoClient = null;
 let mongoDb = null;
 

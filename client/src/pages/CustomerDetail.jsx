@@ -106,7 +106,8 @@ export default function CustomerDetail() {
   const handleDeleteCustomer = async () => {
     setDeleting(true);
     try {
-      await api.deleteCustomer(customer._id || customer.customerId);
+      const targetId = data?.customer?._id || data?.customer?.customerId || id;
+      await api.deleteCustomer(targetId);
       navigate('/customers');
     } catch (err) {
       alert(err.message || 'Failed to delete customer.');

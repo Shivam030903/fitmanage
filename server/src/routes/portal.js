@@ -1,6 +1,6 @@
 import express from 'express';
 import jwt from 'jsonwebtoken';
-import { db, getDaysRemaining, calculateMembershipStatus } from '../db.js';
+import { db, getDaysRemaining, calculateMembershipStatus, getCustomerCurrentMembership } from '../db.js';
 import { whatsappService } from '../services/whatsapp.js';
 import { whatsappWebService } from '../services/whatsappWeb.js';
 
@@ -170,7 +170,7 @@ router.get('/me', memberAuthMiddleware, (req, res) => {
     const memberships = db.memberships.find({ gymId, customerId })
       .sort((a, b) => new Date(b.endDate) - new Date(a.endDate));
 
-    const activeMemb = memberships[0] || null;
+    const activeMemb = getCustomerCurrentMembership(memberships);
     let daysRemaining = 0;
     let membershipStatus = 'unsubscribed';
     let progressPercent = 0;
@@ -312,6 +312,58 @@ router.get('/me', memberAuthMiddleware, (req, res) => {
   } catch (err) {
     console.error('Portal Me Error:', err);
     res.status(500).json({ error: 'Failed to retrieve member profile.' });
+  }
+});
+
+// GET /api/portal/receipt/:id - Member receipt endpoint
+router.get('/receipt/:id', memberAuthMiddleware, (req, res) => {
+  try {
+    const { customerId, gymId } = req.member;
+    const { id } = req.params;
+
+    const payment = db.payments.findOne({ gymId, customerId, _id: id }) || 
+                    db.payments.findOne({ gymId, customerId, transactionReference: id });
+    if (!payment) {
+      return res.status(404).json({ error: 'Receipt record not found.' });
+    }
+
+    const customer = db.customers.findOne({ gymId, customerId });
+    const gym = db.gyms.findById(gymId);
+    const membership = payment.membershipId ? db.memberships.findById(payment.membershipId) : null;
+
+    res.json({
+      receiptNumber: payment.transactionReference,
+      paymentDate: payment.paymentDate,
+      gym: {
+        name: gym?.gymName || 'FitManage Club',
+        address: gym?.address || '',
+        phone: gym?.phone || '',
+        email: gym?.email || '',
+        gstin: gym?.gstin || ''
+      },
+      customer: {
+        name: customer?.name || 'Customer',
+        customerId: customer?.customerId || '',
+        primaryPhone: customer?.contacts?.primary || '',
+        address: customer?.address || ''
+      },
+      membership: {
+        planName: membership?.planName || 'Gym Subscription',
+        startDate: membership?.startDate || '',
+        endDate: membership?.endDate || ''
+      },
+      payment: {
+        totalAmount: payment.totalAmount,
+        amountPaid: payment.amountPaid,
+        pendingAmount: Number(payment.pendingAmount) || 0,
+        paymentMethod: payment.paymentMethod,
+        notes: payment.notes,
+        receivedBy: payment.receivedBy || 'Staff'
+      }
+    });
+  } catch (err) {
+    console.error('Error generating portal receipt:', err);
+    res.status(500).json({ error: 'Failed to fetch receipt data.' });
   }
 });
 

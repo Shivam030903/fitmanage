@@ -42,9 +42,16 @@ export default function RenewModal({ isOpen, onClose, customer, onRenewalComplet
       }
 
       setStartDate(defaultStart);
-      calculateEndDate(defaultStart, 30);
+      const targetPlanName = customer.currentMembership?.planName || selectedPlanName;
+      const planObj = plans.find(p => p.name === targetPlanName) || plans[0];
+      const duration = planObj ? planObj.durationDays : 30;
+      if (planObj) {
+        setSelectedPlanName(planObj.name);
+        setAmount(planObj.price);
+      }
+      calculateEndDate(defaultStart, duration);
     }
-  }, [customer, isOpen]);
+  }, [customer, isOpen, plans]);
 
   const calculateEndDate = (startStr, durationDays) => {
     if (!startStr) return;

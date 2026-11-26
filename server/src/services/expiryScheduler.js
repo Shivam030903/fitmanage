@@ -1,4 +1,4 @@
-import { db, getDaysRemaining } from '../db.js';
+import { db, getDaysRemaining, getCustomerCurrentMembership } from '../db.js';
 import { whatsappService } from './whatsapp.js';
 import { whatsappWebService } from './whatsappWeb.js';
 
@@ -92,12 +92,10 @@ export const expiryScheduler = {
         const phone = customer.contacts?.primary;
         if (!phone) continue;
 
-        // Fetch current active or latest membership
-        const memberships = db.memberships.find({ gymId: gym._id, customerId: customer.customerId })
-          .sort((a, b) => new Date(b.endDate) - new Date(a.endDate));
-        
-        const latestMemb = memberships[0];
-        if (!latestMemb || !latestMemb.endDate) continue;
+        // Fetch current active or latest membership (excluding cancelled)
+        const memberships = db.memberships.find({ gymId: gym._id, customerId: customer.customerId });
+        const latestMemb = getCustomerCurrentMembership(memberships);
+        if (!latestMemb || !latestMemb.endDate || latestMemb.status === 'cancelled') continue;
 
         const daysRemaining = getDaysRemaining(latestMemb.endDate);
 

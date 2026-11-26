@@ -19,8 +19,8 @@ async function request(endpoint, options = {}) {
   });
 
   if (response.status === 401) {
-    // If unauthorized, clear token if expired
-    if (!window.location.pathname.includes('/login')) {
+    // If unauthorized, clear token if expired (do not kick member portal users to staff login)
+    if (!window.location.pathname.includes('/login') && !window.location.pathname.startsWith('/portal')) {
       localStorage.removeItem('fitmanage_token');
       localStorage.removeItem('fitmanage_user');
       localStorage.removeItem('fitmanage_gym');
@@ -121,6 +121,18 @@ export const api = {
     }).then(async (res) => {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to load member portal.');
+      return data;
+    });
+  },
+  portalGetReceipt: (id, token) => {
+    return fetch(`/api/portal/receipt/${id}`, {
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Bearer ${token}`
+      }
+    }).then(async (res) => {
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed to load receipt.');
       return data;
     });
   },

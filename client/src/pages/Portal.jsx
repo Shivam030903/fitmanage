@@ -101,9 +101,9 @@ export default function Portal() {
   // Open printable receipt modal
   const handleOpenReceipt = async (paymentId) => {
     try {
-      const res = await api.getReceipt(paymentId);
-      if (res && res.receipt) {
-        setSelectedReceipt(res.receipt);
+      const res = await api.portalGetReceipt(paymentId, token);
+      if (res) {
+        setSelectedReceipt(res.receipt || res);
       }
     } catch (err) {
       alert('Unable to load receipt details.');

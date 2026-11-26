@@ -45,6 +45,12 @@ export default function WhatsAppModal({ isOpen, onClose, customer, initialTempla
   const primaryNumber = contacts.primary || '';
   const targetPhone = primaryNumber;
 
+  // Active Gateway Status (QR vs Meta)
+  const waConfig = gym?.settings?.whatsapp || {};
+  const isMeta = waConfig.provider === 'meta';
+  const isMetaReady = isMeta && Boolean(waConfig.meta?.phoneNumberId && waConfig.meta?.accessToken);
+  const isGatewayReady = isMeta ? isMetaReady : qrStatus.isConnected;
+
   // Compute template variables
   const customerName = customer.name || 'Valued Member';
   const gymName = gym?.gymName || 'FitZone Pro Club';
@@ -87,7 +93,7 @@ export default function WhatsAppModal({ isOpen, onClose, customer, initialTempla
     setTimeout(() => setCopied(false), 2000);
   };
 
-  // Dispatch directly via linked WhatsApp phone
+  // Dispatch directly via configured WhatsApp gateway (Direct QR or Meta Cloud API)
   const handleSendWhatsApp = async () => {
     if (!targetPhone) {
       alert('Please enter or select a valid phone number.');
@@ -96,8 +102,8 @@ export default function WhatsAppModal({ isOpen, onClose, customer, initialTempla
 
     setFeedback(null);
 
-    // If Direct WhatsApp is active and connected:
-    if (qrStatus.isConnected) {
+    // If configured WhatsApp gateway is ready:
+    if (isGatewayReady) {
       setSending(true);
       try {
         const res = await api.logReminder({
@@ -110,9 +116,10 @@ export default function WhatsAppModal({ isOpen, onClose, customer, initialTempla
         });
 
         if (res.result?.status === 'DELIVERED_AUTOMATIC') {
+          const via = isMeta ? 'Meta Cloud API' : `linked phone (+${qrStatus.linkedPhone})`;
           setFeedback({
             type: 'success',
-            message: `Message dispatched directly from linked phone (+${qrStatus.linkedPhone}) to +91 ${targetPhone}!`
+            message: `Message dispatched directly via ${via} to +91 ${targetPhone}!`
           });
           setTimeout(() => {
             onClose();
@@ -142,7 +149,7 @@ export default function WhatsAppModal({ isOpen, onClose, customer, initialTempla
       return;
     }
 
-    // Direct WhatsApp not linked: fallback to web redirect
+    // Direct Gateway not configured/connected: fallback to web redirect
     openWhatsAppWebFallback();
   };
 
@@ -216,7 +223,18 @@ export default function WhatsAppModal({ isOpen, onClose, customer, initialTempla
               </span>
             </div>
           </div>
-          {qrStatus.isConnected ? (
+          {isMeta ? (
+            isMetaReady ? (
+              <span className="text-[10px] font-bold text-blue-800 bg-blue-100 px-2.5 py-1 rounded-full border border-blue-300 flex items-center space-x-1.5 shadow-sm">
+                <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse" />
+                <span>Meta Cloud API</span>
+              </span>
+            ) : (
+              <span className="text-[10px] font-bold text-amber-800 bg-amber-100 px-2.5 py-1 rounded-full border border-amber-300">
+                Meta API Incomplete (Web Fallback)
+              </span>
+            )
+          ) : qrStatus.isConnected ? (
             <span className="text-[10px] font-bold text-emerald-800 bg-emerald-100 px-2.5 py-1 rounded-full border border-emerald-300 flex items-center space-x-1.5 shadow-sm">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
               <span>Direct Link (+{qrStatus.linkedPhone})</span>
@@ -329,17 +347,17 @@ export default function WhatsAppModal({ isOpen, onClose, customer, initialTempla
               {sending ? (
                 <>
                   <RefreshCw className="w-4 h-4 animate-spin" />
-                  <span>Sending via +{qrStatus.linkedPhone || 'WhatsApp'}...</span>
+                  <span>{isMeta ? 'Sending via Meta Cloud API...' : `Sending via +${qrStatus.linkedPhone || 'WhatsApp'}...`}</span>
                 </>
               ) : feedback?.type === 'success' ? (
                 <>
                   <Check className="w-4 h-4" />
                   <span>Delivered Successfully!</span>
                 </>
-              ) : qrStatus.isConnected ? (
+              ) : isGatewayReady ? (
                 <>
                   <Send className="w-4 h-4" />
-                  <span>Send Directly via WhatsApp (+91 {targetPhone || 'None'})</span>
+                  <span>Send Directly via {isMeta ? 'Meta API' : 'WhatsApp'} (+91 {targetPhone || 'None'})</span>
                 </>
               ) : (
                 <>
