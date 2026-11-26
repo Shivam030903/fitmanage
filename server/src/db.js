@@ -248,8 +248,110 @@ export const db = {
   payments: new MongoCollection('payments'),
   reminderLogs: new MongoCollection('reminderLogs'),
   plans: new MongoCollection('plans'),
-  attendance: new MongoCollection('attendance')
+  attendance: new MongoCollection('attendance'),
+  subscriptions: new MongoCollection('subscriptions')
 };
+
+export const SAAS_PLANS = {
+  starter: {
+    id: 'starter',
+    name: 'Starter',
+    monthlyPrice: 799,
+    yearlyPrice: 7990,
+    memberLimit: 100,
+    staffLimit: 1,
+    features: {
+      whatsappQr: true,
+      metaApi: false,
+      multiStageAuto: false,
+      attendanceScanner: false,
+      unlimitedStaff: false
+    }
+  },
+  growth: {
+    id: 'growth',
+    name: 'Growth',
+    popular: true,
+    monthlyPrice: 1999,
+    yearlyPrice: 19990,
+    memberLimit: 500,
+    staffLimit: 3,
+    features: {
+      whatsappQr: true,
+      metaApi: true,
+      multiStageAuto: true,
+      attendanceScanner: false,
+      unlimitedStaff: false
+    }
+  },
+  pro: {
+    id: 'pro',
+    name: 'Pro',
+    monthlyPrice: 3499,
+    yearlyPrice: 34990,
+    memberLimit: 100000,
+    staffLimit: 100,
+    features: {
+      whatsappQr: true,
+      metaApi: true,
+      multiStageAuto: true,
+      attendanceScanner: true,
+      unlimitedStaff: true
+    }
+  }
+};
+
+export function getGymSubscription(gym) {
+  if (!gym) return null;
+
+  const now = new Date();
+  const sub = gym.subscription || {};
+
+  // If gym was created without subscription, provide 14-day free trial on Pro
+  const createdAt = gym.createdAt ? new Date(gym.createdAt) : now;
+  const trialEnd = sub.trialEndDate 
+    ? new Date(sub.trialEndDate)
+    : new Date(createdAt.getTime() + 14 * 24 * 60 * 60 * 1000);
+
+  const planKey = sub.plan || 'pro';
+  const planConfig = SAAS_PLANS[planKey] || SAAS_PLANS.pro;
+
+  let status = sub.status;
+  if (!status) {
+    status = trialEnd > now ? 'trial' : 'expired';
+  } else if (status === 'trial' && now > trialEnd) {
+    status = 'expired';
+  }
+
+  // Calculate days remaining
+  let daysRemaining = 0;
+  if (status === 'trial') {
+    const diff = trialEnd.getTime() - now.getTime();
+    daysRemaining = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  } else if (sub.currentPeriodEnd) {
+    const periodEnd = new Date(sub.currentPeriodEnd);
+    const diff = periodEnd.getTime() - now.getTime();
+    daysRemaining = Math.max(0, Math.ceil(diff / (1000 * 60 * 60 * 24)));
+  }
+
+  return {
+    plan: planKey,
+    planName: planConfig.name,
+    status,
+    isTrial: status === 'trial',
+    isTrialExpired: status === 'expired',
+    isActive: status === 'active' || status === 'trial',
+    isLocked: Boolean(gym.isLocked),
+    lockReason: gym.lockReason || '',
+    daysRemaining,
+    trialEndDate: trialEnd.toISOString(),
+    currentPeriodEnd: sub.currentPeriodEnd || trialEnd.toISOString(),
+    billingCycle: sub.billingCycle || 'monthly',
+    memberLimit: planConfig.memberLimit,
+    staffLimit: planConfig.staffLimit,
+    features: planConfig.features
+  };
+}
 
 export function getMongoDb() {
   return mongoDb;

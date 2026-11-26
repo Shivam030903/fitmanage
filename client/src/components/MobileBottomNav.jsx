@@ -12,7 +12,8 @@ import {
   ShieldCheck,
   LogOut,
   RefreshCw,
-  QrCode
+  QrCode,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -122,6 +123,30 @@ export default function MobileBottomNav() {
                 </div>
                 <span>Gym Settings</span>
               </NavLink>
+
+              <NavLink
+                to="/subscription"
+                onClick={() => setShowMoreMenu(false)}
+                className="flex items-center space-x-3 p-3 rounded-xl bg-slate-50 hover:bg-emerald-50 text-slate-700 hover:text-emerald-700 font-medium text-xs transition-colors"
+              >
+                <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-600">
+                  <Sparkles className="w-4 h-4" />
+                </div>
+                <span>SaaS Billing</span>
+              </NavLink>
+
+              {user?.isSuperAdmin && (
+                <NavLink
+                  to="/super-admin"
+                  onClick={() => setShowMoreMenu(false)}
+                  className="col-span-2 flex items-center space-x-3 p-3 rounded-xl bg-amber-50 hover:bg-amber-100 text-amber-900 font-bold text-xs transition-colors border border-amber-200"
+                >
+                  <div className="p-2 rounded-lg bg-amber-400 text-slate-950">
+                    <ShieldCheck className="w-4 h-4" />
+                  </div>
+                  <span>Super Admin OS (Founder Mode)</span>
+                </NavLink>
+              )}
 
               <button
                 type="button"

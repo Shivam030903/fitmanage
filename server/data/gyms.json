@@ -86,6 +86,25 @@
       }
     },
     "createdAt": "2026-11-18T17:09:08.196Z",
-    "updatedAt": "2026-11-26T07:05:18.975Z"
+    "updatedAt": "2026-11-26T07:25:14.669Z",
+    "subscription": {
+      "plan": "growth",
+      "status": "active",
+      "billingCycle": "monthly",
+      "currentPeriodStart": "2026-11-26T07:25:14.669Z",
+      "currentPeriodEnd": "2026-12-26T07:25:14.669Z",
+      "trialEndDate": "2026-11-26T07:25:14.669Z",
+      "memberLimit": 500,
+      "staffLimit": 3,
+      "features": {
+        "whatsappQr": true,
+        "metaApi": true,
+        "multiStageAuto": true,
+        "attendanceScanner": false,
+        "unlimitedStaff": false
+      }
+    },
+    "isLocked": false,
+    "lockReason": ""
   }
 ]

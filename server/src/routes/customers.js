@@ -1,5 +1,5 @@
 import express from 'express';
-import { db, calculateMembershipStatus, getDaysRemaining, getCustomerCurrentMembership } from '../db.js';
+import { db, calculateMembershipStatus, getDaysRemaining, getCustomerCurrentMembership, getGymSubscription } from '../db.js';
 import { authMiddleware, roleCheck } from '../middleware/auth.js';
 import { whatsappService } from '../services/whatsapp.js';
 
@@ -183,6 +183,22 @@ router.get('/:id', (req, res) => {
 router.post('/', async (req, res) => {
   try {
     const { gymId, user } = req;
+
+    // Check SaaS Platform Subscription Member Limit
+    const gym = req.gym || db.gyms.findById(gymId);
+    const sub = getGymSubscription(gym);
+    const currentMembersCount = db.customers.find({ gymId }).length;
+
+    if (sub && currentMembersCount >= sub.memberLimit) {
+      return res.status(403).json({
+        error: `Member limit reached (${currentMembersCount}/${sub.memberLimit} on ${sub.planName} plan). Please upgrade your platform subscription to add more members.`,
+        isLimitReached: true,
+        currentCount: currentMembersCount,
+        limit: sub.memberLimit,
+        plan: sub.plan
+      });
+    }
+
     const {
       name,
       gender = '',

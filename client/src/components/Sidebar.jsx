@@ -13,7 +13,8 @@ import {
   RefreshCw,
   Dumbbell,
   QrCode,
-  ExternalLink
+  ExternalLink,
+  Sparkles
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
@@ -38,6 +39,7 @@ export default function Sidebar() {
     { to: '/reports', label: 'Reports', icon: BarChart3 },
     { to: '/staff', label: 'Staff & Roles', icon: ShieldCheck, ownerOnly: true },
     { to: '/settings', label: 'Settings', icon: Settings },
+    { to: '/subscription', label: 'SaaS Billing', icon: Sparkles, badge: gym?.subscription?.planName || 'Plan' },
   ];
 
   return (
@@ -103,7 +105,7 @@ export default function Sidebar() {
         })}
 
         {/* Member Self-Service Portal Quick Access */}
-        <div className="pt-3">
+        <div className="pt-3 space-y-2">
           <a
             href="/portal"
             target="_blank"
@@ -116,6 +118,27 @@ export default function Sidebar() {
             </div>
             <ExternalLink className="w-3.5 h-3.5 opacity-70" />
           </a>
+
+          {user?.isSuperAdmin && (
+            <NavLink
+              to="/super-admin"
+              className={({ isActive }) =>
+                `flex items-center justify-between px-3.5 py-2.5 rounded-xl text-xs font-bold transition-all border ${
+                  isActive
+                    ? 'bg-amber-400 text-slate-950 border-amber-400 shadow-md shadow-amber-400/20'
+                    : 'bg-amber-500/10 text-amber-300 hover:bg-amber-500/20 border-amber-500/30'
+                }`
+              }
+            >
+              <div className="flex items-center space-x-2.5">
+                <ShieldCheck className="w-4 h-4 text-amber-400" />
+                <span>Super Admin OS</span>
+              </div>
+              <span className="text-[10px] bg-amber-400/20 text-amber-300 px-1.5 py-0.2 rounded font-mono uppercase font-extrabold">
+                Founder
+              </span>
+            </NavLink>
+          )}
         </div>
       </nav>
 

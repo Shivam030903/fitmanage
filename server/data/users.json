@@ -53,5 +53,17 @@
     "gymId": "gym_1795021748195",
     "createdAt": "2026-11-18T17:09:08.339Z",
     "updatedAt": "2026-11-18T17:09:08.339Z"
+  },
+  {
+    "_id": "user_superadmin_01",
+    "name": "FitManage SaaS Founder",
+    "email": "superadmin@fitmanage.io",
+    "password": "$2a$10$h/JqGZwxvey88tkMMJMG6eZ0R/8kJiVVyYNCcFU/CaRHzxSGKzJh6",
+    "role": "superadmin",
+    "isSuperAdmin": true,
+    "phone": "+91 99999 00000",
+    "gymId": "gym_fitzone_01",
+    "createdAt": "2026-11-26T07:24:39.601Z",
+    "updatedAt": "2026-11-26T07:24:39.601Z"
   }
 ]

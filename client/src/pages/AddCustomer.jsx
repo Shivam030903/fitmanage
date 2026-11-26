@@ -4,6 +4,7 @@ import { UserPlus, ArrowLeft, Dumbbell, ShieldCheck, Check, CheckCircle2, Messag
 import confetti from 'canvas-confetti';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
+import UpgradeModal from '../components/UpgradeModal';
 
 export default function AddCustomer() {
   const navigate = useNavigate();
@@ -34,6 +35,8 @@ export default function AddCustomer() {
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [limitInfo, setLimitInfo] = useState({ current: 0, limit: 100, plan: 'Starter' });
 
   useEffect(() => {
     async function loadPlans() {
@@ -154,7 +157,16 @@ export default function AddCustomer() {
         navigate(`/customers/${res.customer._id}`);
       }
     } catch (err) {
-      setError(err.message || 'Failed to create customer.');
+      const errMsg = err.message || 'Failed to create customer.';
+      setError(errMsg);
+      if (errMsg.toLowerCase().includes('limit reached') || errMsg.toLowerCase().includes('upgrade')) {
+        setLimitInfo({
+          current: gym?.subscription?.memberLimit || 100,
+          limit: gym?.subscription?.memberLimit || 100,
+          plan: gym?.subscription?.planName || 'Current Plan'
+        });
+        setShowUpgradeModal(true);
+      }
     } finally {
       setLoading(false);
     }
@@ -508,6 +520,16 @@ export default function AddCustomer() {
           </div>
         </div>
       )}
+      {/* Member Limit Paywall Modal */}
+      <UpgradeModal
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        title="Member Limit Reached"
+        message={`Your ${limitInfo.plan} tier includes up to ${limitInfo.limit} members. Upgrade your platform subscription to continue adding more members.`}
+        currentCount={limitInfo.current}
+        limit={limitInfo.limit}
+        plan={limitInfo.plan}
+      />
     </div>
   );
 }

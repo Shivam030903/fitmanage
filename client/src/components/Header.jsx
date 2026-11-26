@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Search, Download, Dumbbell, Bell, MoreVertical, LogOut, Settings, ShieldCheck, RefreshCw, User, QrCode } from 'lucide-react';
+import { Search, Download, Dumbbell, Bell, MoreVertical, LogOut, Settings, ShieldCheck, RefreshCw, User, QrCode, Sparkles } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Header({ title, onInstallClick, isInstallable }) {
@@ -90,6 +90,19 @@ export default function Header({ title, onInstallClick, isInstallable }) {
           <Search className="w-3.5 h-3.5 text-slate-400 absolute left-2.5 top-1/2 -translate-y-1/2" />
         </form>
 
+        {/* SuperAdmin Founder Shortcut */}
+        {user?.isSuperAdmin && (
+          <button
+            onClick={() => navigate('/super-admin')}
+            className="flex items-center space-x-1.5 px-3 py-1.5 rounded-xl bg-amber-400 hover:bg-amber-300 text-slate-950 text-xs font-black shadow-sm transition-all"
+            title="SaaS Founder Master Control"
+          >
+            <Sparkles className="w-3.5 h-3.5 text-slate-950" />
+            <span className="hidden sm:inline">Super Admin</span>
+            <span className="sm:hidden">Master</span>
+          </button>
+        )}
+
         {/* Quick Check-in Button */}
         <button
           onClick={() => navigate('/attendance')}
@@ -168,6 +181,26 @@ export default function Header({ title, onInstallClick, isInstallable }) {
                   >
                     <ShieldCheck className="w-4 h-4 text-slate-400" />
                     <span>Staff & Roles</span>
+                  </button>
+                )}
+
+                <button
+                  type="button"
+                  onClick={() => { setShowMenu(false); navigate('/subscription'); }}
+                  className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-slate-700 hover:bg-slate-50 transition-colors text-left"
+                >
+                  <Sparkles className="w-4 h-4 text-emerald-600" />
+                  <span>SaaS Subscription</span>
+                </button>
+
+                {user?.isSuperAdmin && (
+                  <button
+                    type="button"
+                    onClick={() => { setShowMenu(false); navigate('/super-admin'); }}
+                    className="w-full flex items-center space-x-2.5 px-3 py-2 rounded-xl text-amber-800 bg-amber-50 hover:bg-amber-100 font-bold transition-colors text-left"
+                  >
+                    <ShieldCheck className="w-4 h-4 text-amber-600" />
+                    <span>Super Admin OS</span>
                   </button>
                 )}
 

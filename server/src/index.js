@@ -17,6 +17,8 @@ import settingsRoutes from './routes/settings.js';
 import portalRoutes from './routes/portal.js';
 import attendanceRoutes from './routes/attendance.js';
 import onlinePayRoutes from './routes/onlinePay.js';
+import subscriptionRoutes from './routes/subscription.js';
+import superAdminRoutes from './routes/superAdmin.js';
 import { seedInitialData, connectMongoDB } from './db.js';
 import { whatsappWebService } from './services/whatsappWeb.js';
 import { expiryScheduler } from './services/expiryScheduler.js';
@@ -49,6 +51,8 @@ app.use('/api/settings', settingsRoutes);
 app.use('/api/portal', portalRoutes);
 app.use('/api/attendance', attendanceRoutes);
 app.use('/api/online-pay', onlinePayRoutes);
+app.use('/api/subscription', subscriptionRoutes);
+app.use('/api/super-admin', superAdminRoutes);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

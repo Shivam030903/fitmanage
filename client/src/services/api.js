@@ -150,4 +150,21 @@ export const api = {
   getOnlinePayDetails: (token) => request(`/online-pay/${token}`),
   createOnlineOrder: (data) => request('/online-pay/create-order', { method: 'POST', body: JSON.stringify(data) }),
   verifyOnlinePayment: (data) => request('/online-pay/verify', { method: 'POST', body: JSON.stringify(data) }),
+
+  // SaaS Platform Subscription
+  getSubscription: () => request('/subscription'),
+  createSubscriptionOrder: (data) => request('/subscription/create-order', { method: 'POST', body: JSON.stringify(data) }),
+  verifySubscription: (data) => request('/subscription/verify', { method: 'POST', body: JSON.stringify(data) }),
+  getSubscriptionInvoices: () => request('/subscription/invoices'),
+
+  // Super Admin Master Dashboard
+  getSuperAdminStats: () => request('/super-admin/stats'),
+  getSuperAdminGyms: (params = {}) => {
+    const q = new URLSearchParams(params).toString();
+    return request(`/super-admin/gyms${q ? '?' + q : ''}`);
+  },
+  superAdminToggleLock: (gymId, data) => request(`/super-admin/gyms/${gymId}/toggle-lock`, { method: 'POST', body: JSON.stringify(data) }),
+  superAdminChangePlan: (gymId, data) => request(`/super-admin/gyms/${gymId}/change-plan`, { method: 'POST', body: JSON.stringify(data) }),
+  superAdminImpersonate: (gymId) => request(`/super-admin/gyms/${gymId}/impersonate`, { method: 'POST' }),
+  getSuperAdminSubscriptions: () => request('/super-admin/subscriptions')
 };

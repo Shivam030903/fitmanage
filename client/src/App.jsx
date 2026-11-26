@@ -5,6 +5,7 @@ import Sidebar from './components/Sidebar';
 import Header from './components/Header';
 import MobileBottomNav from './components/MobileBottomNav';
 import PWAInstallBanner from './components/PWAInstallBanner';
+import TrialBanner from './components/TrialBanner';
 
 import Login from './pages/Login';
 import Dashboard from './pages/Dashboard';
@@ -21,6 +22,8 @@ import Settings from './pages/Settings';
 import Portal from './pages/Portal';
 import Attendance from './pages/Attendance';
 import PublicPayment from './pages/PublicPayment';
+import Subscription from './pages/Subscription';
+import SuperAdmin from './pages/SuperAdmin';
 
 function ProtectedLayout({ children, title }) {
   const { user, loading } = useAuth();
@@ -69,6 +72,9 @@ function ProtectedLayout({ children, title }) {
           title={title} 
           onInstallClick={handleInstallClick} 
         />
+
+        {/* 14-Day Free Trial & Subscription Status Banner */}
+        <TrialBanner />
 
         {/* Workspace Canvas (Light SaaS theme) */}
         <main className="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto pb-24 lg:pb-12">
@@ -158,6 +164,18 @@ export default function App() {
           <Route path="/attendance" element={
             <ProtectedLayout title="Attendance & Check-in">
               <Attendance />
+            </ProtectedLayout>
+          } />
+
+          <Route path="/subscription" element={
+            <ProtectedLayout title="SaaS Subscription">
+              <Subscription />
+            </ProtectedLayout>
+          } />
+
+          <Route path="/super-admin" element={
+            <ProtectedLayout title="Super Admin OS">
+              <SuperAdmin />
             </ProtectedLayout>
           } />
 

@@ -1,0 +1,18 @@
+[
+  {
+    "gymId": "gym_1795021748195",
+    "gymName": "iron fitness",
+    "planId": "growth",
+    "planName": "Growth",
+    "billingCycle": "monthly",
+    "amount": 1999,
+    "status": "granted_by_founder",
+    "periodStart": "2026-11-26T07:25:14.669Z",
+    "periodEnd": "2026-12-26T07:25:14.669Z",
+    "transactionReference": "FOUNDER-GRANT-914671",
+    "paidBy": "FitManage SaaS Founder",
+    "createdAt": "2026-11-26T07:25:14.669Z",
+    "_id": "id_1795677914671_9bbrei",
+    "updatedAt": "2026-11-26T07:25:14.671Z"
+  }
+]

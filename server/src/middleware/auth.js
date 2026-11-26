@@ -28,9 +28,29 @@ export function authMiddleware(req, res, next) {
       return res.status(401).json({ error: 'User account not found or deactivated.' });
     }
 
+    const gym = user.gymId ? db.gyms.findById(user.gymId) : null;
+
     req.user = user;
+    req.gym = gym;
     req.gymId = user.gymId;
     req.role = user.role;
+    req.isSuperAdmin = user.role === 'superadmin' || Boolean(user.isSuperAdmin);
+
+    // If gym is locked, block write/read operations except subscription billing and profile read
+    if (gym && gym.isLocked && !req.isSuperAdmin) {
+      const allowedPaths = ['/api/subscription', '/api/auth/me', '/api/auth/logout'];
+      const currentUrl = req.originalUrl || req.url || '';
+      const isAllowed = allowedPaths.some(p => currentUrl.startsWith(p));
+
+      if (!isAllowed) {
+        return res.status(403).json({
+          error: `Your gym account has been locked. Reason: ${gym.lockReason || 'Subscription lapsed'}. Please renew your platform subscription to resume operations.`,
+          isLocked: true,
+          lockReason: gym.lockReason || 'Subscription lapsed'
+        });
+      }
+    }
+
     next();
   } catch (err) {
     return res.status(401).json({ error: 'Invalid or expired session token.' });
@@ -39,6 +59,10 @@ export function authMiddleware(req, res, next) {
 
 export function roleCheck(allowedRoles = []) {
   return (req, res, next) => {
+    // SuperAdmin always has full master access
+    if (req.isSuperAdmin) {
+      return next();
+    }
     if (!req.role || !allowedRoles.includes(req.role)) {
       return res.status(403).json({ error: 'Access denied. Insufficient permissions for this action.' });
     }
