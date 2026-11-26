@@ -1,4 +1,5 @@
 import express from 'express';
+import bcrypt from 'bcryptjs';
 import jwt from 'jsonwebtoken';
 import { db, SAAS_PLANS, getGymSubscription } from '../db.js';
 import { authMiddleware } from '../middleware/auth.js';
@@ -171,6 +172,212 @@ router.get('/gyms', (req, res) => {
   } catch (err) {
     console.error('Error listing gyms for super-admin:', err);
     res.status(500).json({ error: 'Failed to retrieve gym directory.' });
+  }
+});
+
+/**
+ * POST /api/super-admin/gyms
+ * Direct onboarding of a new gym and owner account by Super Admin.
+ */
+router.post('/gyms', async (req, res) => {
+  try {
+    const {
+      gymName,
+      ownerName,
+      ownerEmail,
+      ownerPhone = '',
+      password = 'password123',
+      address = '',
+      planId = 'pro',
+      billingCycle = 'monthly',
+      status = 'trial', // 'trial' or 'active'
+      trialDays = 14,
+      whatsAppProvider = 'whatsapp_qr'
+    } = req.body;
+
+    if (!gymName || !gymName.trim()) {
+      return res.status(400).json({ error: 'Gym Name is required.' });
+    }
+    if (!ownerName || !ownerName.trim()) {
+      return res.status(400).json({ error: 'Owner Full Name is required.' });
+    }
+    if (!ownerEmail || !ownerEmail.trim()) {
+      return res.status(400).json({ error: 'Owner Email Address is required.' });
+    }
+
+    const cleanEmail = ownerEmail.toLowerCase().trim();
+    const existingUser = db.users.findOne({ email: cleanEmail });
+    if (existingUser) {
+      return res.status(400).json({ error: `An account with email "${cleanEmail}" already exists in the system.` });
+    }
+
+    const plan = SAAS_PLANS[planId] || SAAS_PLANS.pro;
+    const gymId = `gym_${Date.now()}`;
+    const now = new Date();
+    const durationDays = status === 'trial' ? Number(trialDays) || 14 : 30;
+    const periodEnd = new Date(now.getTime() + durationDays * 24 * 60 * 60 * 1000);
+
+    // 1. Create Gym Record
+    const gym = db.gyms.insertOne({
+      _id: gymId,
+      gymName: gymName.trim(),
+      address: address.trim(),
+      phone: ownerPhone.trim(),
+      email: cleanEmail,
+      isLocked: false,
+      lockReason: '',
+      subscription: {
+        plan: planId,
+        status,
+        billingCycle,
+        currentPeriodStart: now.toISOString(),
+        currentPeriodEnd: periodEnd.toISOString(),
+        trialEndDate: periodEnd.toISOString(),
+        memberLimit: plan.memberLimit,
+        staffLimit: plan.staffLimit,
+        features: plan.features
+      },
+      settings: {
+        currency: 'INR',
+        currencySymbol: '₹',
+        timezone: 'Asia/Kolkata',
+        expiryReminderDays: [7, 3, 1, 0, -1],
+        allowPartialAccess: true,
+        occupancy: {
+          currentMembers: 0,
+          maxCapacity: 50
+        },
+        whatsapp: {
+          provider: whatsAppProvider,
+          autoWelcome: true,
+          meta: {
+            phoneNumberId: '',
+            accessToken: '',
+            businessAccountId: ''
+          }
+        },
+        multiStageExpiry: {
+          enabled: true,
+          stages: {
+            stage_7days: {
+              enabled: true,
+              days: 7,
+              template: `Hello {customerName}! 👋\n\nA friendly reminder that your {planName} membership at {gymName} will expire in 7 days on {expiryDate}.\n\nRenew early to maintain uninterrupted access! 💪\n\n_{gymName}_`
+            },
+            stage_1day: {
+              enabled: true,
+              days: 1,
+              template: `Hi {customerName}! ⏰\n\nYour gym membership at {gymName} expires TOMORROW ({expiryDate})!\n\nRenew today to keep your workout streak alive. 🏋️‍♂️\n\n_{gymName}_`
+            },
+            stage_expiry_day: {
+              enabled: true,
+              days: 0,
+              template: `Important Notice, {customerName}! ⚠️\n\nYour {planName} membership at {gymName} expires TODAY ({expiryDate}).\n\nPlease visit the front desk to renew today! 🚀\n\n_{gymName}_`
+            }
+          }
+        }
+      },
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
+    });
+
+    // 2. Create Default Membership Plans for this gym
+    const defaultPlans = [
+      { gymId, name: 'Monthly Standard', durationDays: 30, price: 1500, description: '30 days gym access', active: true },
+      { gymId, name: 'Quarterly', durationDays: 90, price: 4000, description: '90 days access', active: true },
+      { gymId, name: 'Half-Yearly', durationDays: 180, price: 7500, description: '180 days access', active: true },
+      { gymId, name: 'Yearly VIP', durationDays: 365, price: 13000, description: '1 year all inclusive', active: true }
+    ];
+    defaultPlans.forEach(p => db.plans.insertOne(p));
+
+    // 3. Create Owner User
+    const plainPassword = password.trim() || 'password123';
+    const salt = await bcrypt.genSalt(10);
+    const hashedPassword = await bcrypt.hash(plainPassword, salt);
+
+    const user = db.users.insertOne({
+      name: ownerName.trim(),
+      email: cleanEmail,
+      password: hashedPassword,
+      phone: ownerPhone.trim(),
+      gymId: gym._id,
+      role: 'owner',
+      createdAt: now.toISOString(),
+      updatedAt: now.toISOString()
+    });
+
+    // 4. Record Initial Subscription in db.subscriptions
+    db.subscriptions.insertOne({
+      gymId: gym._id,
+      gymName: gym.gymName,
+      planId,
+      planName: plan.name,
+      billingCycle,
+      amount: status === 'active' ? plan.monthlyPrice : 0,
+      status: status === 'trial' ? 'trial_initiated' : 'provisioned_by_founder',
+      periodStart: now.toISOString(),
+      periodEnd: periodEnd.toISOString(),
+      transactionReference: `ADMIN-ONBOARD-${Date.now().toString().slice(-6)}`,
+      paidBy: req.user?.name || 'SuperAdmin',
+      createdAt: now.toISOString()
+    });
+
+    res.status(201).json({
+      success: true,
+      message: `🎉 Gym "${gym.gymName}" onboarded successfully!`,
+      gym,
+      owner: {
+        _id: user._id,
+        name: user.name,
+        email: user.email,
+        phone: user.phone,
+        role: user.role
+      },
+      credentials: {
+        email: cleanEmail,
+        password: plainPassword
+      }
+    });
+  } catch (err) {
+    console.error('Super-admin create gym error:', err);
+    res.status(500).json({ error: 'Failed to onboard gym: ' + err.message });
+  }
+});
+
+/**
+ * DELETE /api/super-admin/gyms/:id
+ * Delete a gym account and its associated records (Super Admin only).
+ */
+router.delete('/gyms/:id', (req, res) => {
+  try {
+    const { id } = req.params;
+    const gym = db.gyms.findById(id);
+    if (!gym) {
+      return res.status(404).json({ error: 'Gym not found.' });
+    }
+
+    // Delete gym record
+    db.gyms.deleteOne({ _id: id });
+    
+    // Delete users associated with this gym (never delete superadmin user)
+    const gymUsers = db.users.find({ gymId: id }).filter(u => u.role !== 'superadmin');
+    gymUsers.forEach(u => db.users.deleteOne({ _id: u._id }));
+
+    // Delete related records
+    db.customers.deleteMany({ gymId: id });
+    db.memberships.deleteMany({ gymId: id });
+    db.payments.deleteMany({ gymId: id });
+    db.attendance.deleteMany({ gymId: id });
+    db.leads.deleteMany({ gymId: id });
+    db.plans.deleteMany({ gymId: id });
+
+    res.json({
+      success: true,
+      message: `Gym "${gym.gymName}" and all associated data have been permanently removed.`
+    });
+  } catch (err) {
+    console.error('Super-admin delete gym error:', err);
+    res.status(500).json({ error: 'Failed to delete gym: ' + err.message });
   }
 });
 

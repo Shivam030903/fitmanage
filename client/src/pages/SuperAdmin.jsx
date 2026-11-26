@@ -24,7 +24,15 @@ import {
   Layers,
   Eye,
   Sliders,
-  X
+  X,
+  Plus,
+  Trash2,
+  Copy,
+  Check,
+  ChevronRight,
+  Key,
+  Share2,
+  Crown
 } from 'lucide-react';
 import { api } from '../services/api';
 import { useAuth } from '../context/AuthContext';
@@ -52,6 +60,26 @@ export default function SuperAdmin() {
   const [lockTargetGym, setLockTargetGym] = useState(null);
   const [lockReason, setLockReason] = useState('Subscription payment lapsed.');
   const [locking, setLocking] = useState(false);
+
+  // Setup / Onboard New Gym state
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [submittingCreate, setSubmittingCreate] = useState(false);
+  const [createError, setCreateError] = useState('');
+  const [createdGymResult, setCreatedGymResult] = useState(null);
+  const [copiedMessage, setCopiedMessage] = useState(false);
+  const [createForm, setCreateForm] = useState({
+    gymName: '',
+    ownerName: '',
+    ownerEmail: '',
+    ownerPhone: '',
+    password: 'password123',
+    address: '',
+    planId: 'pro',
+    billingCycle: 'monthly',
+    status: 'trial',
+    trialDays: 14,
+    whatsAppProvider: 'whatsapp_qr'
+  });
 
   const fetchData = async () => {
     try {
@@ -136,6 +164,57 @@ export default function SuperAdmin() {
     }
   };
 
+  const handleCreateGymSubmit = async (e) => {
+    e.preventDefault();
+    setCreateError('');
+    setSubmittingCreate(true);
+    try {
+      const res = await api.superAdminCreateGym(createForm);
+      setCreatedGymResult(res);
+      setShowCreateModal(false);
+      setCreateForm({
+        gymName: '',
+        ownerName: '',
+        ownerEmail: '',
+        ownerPhone: '',
+        password: 'password123',
+        address: '',
+        planId: 'pro',
+        billingCycle: 'monthly',
+        status: 'trial',
+        trialDays: 14,
+        whatsAppProvider: 'whatsapp_qr'
+      });
+      fetchData();
+    } catch (err) {
+      setCreateError(err.message || 'Failed to onboard gym.');
+    } finally {
+      setSubmittingCreate(false);
+    }
+  };
+
+  const handleDeleteGym = async (gym) => {
+    if (!window.confirm(`⚠️ DANGER: Are you sure you want to permanently delete gym "${gym.gymName}"? All its member records, plans, and attendance data will be permanently wiped.`)) {
+      return;
+    }
+    try {
+      await api.superAdminDeleteGym(gym._id);
+      fetchData();
+    } catch (err) {
+      alert(err.message || 'Failed to delete gym.');
+    }
+  };
+
+  const copyWhatsAppMessage = (res) => {
+    if (!res) return;
+    const planName = res.gym?.subscription?.plan ? res.gym.subscription.plan.toUpperCase() : 'PRO';
+    const text = `🎉 Welcome to FitManage!\n\nYour gym management system for *${res.gym?.gymName}* is now active and ready to use.\n\n🌐 *Login Portal:* https://fitmanage-p8bc.onrender.com/login\n👤 *Owner Email:* ${res.credentials?.email}\n🔑 *Password:* ${res.credentials?.password}\n⭐ *Plan:* ${planName} (${res.gym?.subscription?.status === 'trial' ? '14-Day Free Trial' : 'Active Paid'})\n\nYou can log in, set up your studio profile, and start registering members and sending automated WhatsApp expiry alerts!\n\n_FitManage SaaS Platform_`;
+
+    navigator.clipboard.writeText(text);
+    setCopiedMessage(true);
+    setTimeout(() => setCopiedMessage(false), 3000);
+  };
+
   return (
     <div className="max-w-7xl mx-auto space-y-8 pb-20">
       {/* Top Banner Header */}
@@ -156,23 +235,30 @@ export default function SuperAdmin() {
               Super Admin Overview
             </h1>
             <p className="text-xs text-slate-400 max-w-xl">
-              Monitor monthly recurring revenue (MRR), manage gym fleet subscriptions, unlock accounts, and oversee WhatsApp health across India.
+              Monitor monthly recurring revenue (MRR), manage gym fleet subscriptions, unlock accounts, and provision new gym tenants.
             </p>
           </div>
 
-          <div className="flex items-center space-x-3 shrink-0">
+          <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+            <button
+              onClick={() => { setShowCreateModal(true); setCreateError(''); }}
+              className="px-4 py-2.5 rounded-xl bg-gradient-to-r from-emerald-500 to-teal-400 hover:from-emerald-400 hover:to-teal-300 text-slate-950 font-extrabold text-xs flex items-center space-x-1.5 transition-all shadow-lg shadow-emerald-500/25 active:scale-95"
+            >
+              <Plus className="w-4 h-4 stroke-[3]" />
+              <span>+ Setup New Gym</span>
+            </button>
             <button
               onClick={fetchData}
               className="p-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold text-xs flex items-center space-x-1.5 transition-colors border border-slate-700"
             >
               <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-              <span>Refresh Metrics</span>
+              <span>Refresh</span>
             </button>
             <Link
               to="/dashboard"
-              className="px-4 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center space-x-1.5 transition-all shadow-md shadow-emerald-500/25"
+              className="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs flex items-center space-x-1.5 transition-all border border-slate-700"
             >
-              <span>Back to Gym App</span>
+              <span>Gym App</span>
               <ChevronRight className="w-4 h-4" />
             </Link>
           </div>
@@ -322,6 +408,15 @@ export default function SuperAdmin() {
               className="px-3.5 py-1.5 rounded-xl bg-slate-900 text-white font-bold text-xs"
             >
               Filter
+            </button>
+
+            <button
+              type="button"
+              onClick={() => { setShowCreateModal(true); setCreateError(''); }}
+              className="px-3.5 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center space-x-1 transition-all shadow-sm"
+            >
+              <Plus className="w-3.5 h-3.5 stroke-[2.5]" />
+              <span>Onboard Gym</span>
             </button>
           </form>
         </div>
@@ -477,6 +572,16 @@ export default function SuperAdmin() {
                           }`}
                         >
                           {gym.isLocked ? <Lock className="w-3.5 h-3.5" /> : <Unlock className="w-3.5 h-3.5" />}
+                        </button>
+
+                        {/* Delete Gym */}
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteGym(gym)}
+                          title="Permanently Delete Gym Account"
+                          className="p-1.5 rounded-lg bg-slate-100 hover:bg-rose-100 text-slate-400 hover:text-rose-600 transition-colors"
+                        >
+                          <Trash2 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </td>
@@ -644,6 +749,331 @@ export default function SuperAdmin() {
                 }`}
               >
                 {locking ? 'Updating...' : lockTargetGym.isLocked ? 'Unlock Account' : 'Confirm Suspension'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Setup / Onboard New Gym Modal */}
+      {showCreateModal && (
+        <div 
+          className="fixed inset-0 z-50 bg-slate-950/70 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in overflow-y-auto"
+          onClick={() => setShowCreateModal(false)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-xl w-full p-6 sm:p-7 shadow-2xl space-y-5 border border-slate-200 my-8 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between border-b border-slate-100 pb-3">
+              <div className="flex items-center space-x-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-gradient-to-tr from-emerald-500 to-teal-400 text-slate-950 flex items-center justify-center font-bold shadow-md shadow-emerald-500/20">
+                  <Plus className="w-5 h-5 stroke-[2.5]" />
+                </div>
+                <div>
+                  <h3 className="font-bold text-slate-900 text-base">Setup & Onboard New Gym</h3>
+                  <p className="text-xs text-slate-400">Provision gym workspace, owner login credentials, and SaaS tier</p>
+                </div>
+              </div>
+              <button 
+                onClick={() => setShowCreateModal(false)}
+                className="p-1 rounded-lg text-slate-400 hover:bg-slate-100"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+
+            {createError && (
+              <div className="p-3 bg-rose-50 border border-rose-200 rounded-xl text-rose-700 text-xs font-semibold">
+                {createError}
+              </div>
+            )}
+
+            <form onSubmit={handleCreateGymSubmit} className="space-y-4 text-xs">
+              {/* Gym Info Section */}
+              <div className="space-y-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+                <span className="font-bold text-slate-700 uppercase tracking-wider text-[10px] flex items-center space-x-1">
+                  <Building2 className="w-3.5 h-3.5 text-emerald-600" />
+                  <span>1. Gym Facility Details</span>
+                </span>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Gym / Studio Name *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Iron Gym & Fitness"
+                      value={createForm.gymName}
+                      onChange={(e) => setCreateForm({ ...createForm, gymName: e.target.value })}
+                      className="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Location / Address</label>
+                    <input
+                      type="text"
+                      placeholder="e.g. Bandra West, Mumbai"
+                      value={createForm.address}
+                      onChange={(e) => setCreateForm({ ...createForm, address: e.target.value })}
+                      className="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Owner Account Section */}
+              <div className="space-y-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+                <span className="font-bold text-slate-700 uppercase tracking-wider text-[10px] flex items-center space-x-1">
+                  <Users className="w-3.5 h-3.5 text-blue-600" />
+                  <span>2. Gym Owner Login Credentials</span>
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Owner Full Name *</label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Rajesh Malhotra"
+                      value={createForm.ownerName}
+                      onChange={(e) => setCreateForm({ ...createForm, ownerName: e.target.value })}
+                      className="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Owner Email (Login ID) *</label>
+                    <input
+                      type="email"
+                      required
+                      placeholder="owner@irongym.com"
+                      value={createForm.ownerEmail}
+                      onChange={(e) => setCreateForm({ ...createForm, ownerEmail: e.target.value })}
+                      className="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Owner WhatsApp Phone</label>
+                    <input
+                      type="tel"
+                      placeholder="e.g. 9820012345"
+                      value={createForm.ownerPhone}
+                      onChange={(e) => setCreateForm({ ...createForm, ownerPhone: e.target.value })}
+                      className="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+
+                  <div>
+                    <div className="flex items-center justify-between mb-1">
+                      <label className="font-semibold text-slate-700">Initial Password *</label>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          const randomPass = 'fit' + Math.floor(100000 + Math.random() * 900000);
+                          setCreateForm({ ...createForm, password: randomPass });
+                        }}
+                        className="text-[10px] text-emerald-600 hover:underline font-bold"
+                      >
+                        🎲 Generate Random
+                      </button>
+                    </div>
+                    <input
+                      type="text"
+                      required
+                      value={createForm.password}
+                      onChange={(e) => setCreateForm({ ...createForm, password: e.target.value })}
+                      className="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white font-mono focus:outline-none focus:border-emerald-500"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* SaaS Subscription Tier & Engine */}
+              <div className="space-y-3 bg-slate-50 p-3.5 rounded-2xl border border-slate-100">
+                <span className="font-bold text-slate-700 uppercase tracking-wider text-[10px] flex items-center space-x-1">
+                  <Crown className="w-3.5 h-3.5 text-amber-500" />
+                  <span>3. SaaS Subscription Plan & Gateway</span>
+                </span>
+
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
+                  <div 
+                    onClick={() => setCreateForm({ ...createForm, planId: 'starter' })}
+                    className={`p-3 rounded-xl border text-center cursor-pointer transition-all ${
+                      createForm.planId === 'starter' 
+                        ? 'border-emerald-500 bg-emerald-50 text-slate-900 shadow-sm' 
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="font-bold text-xs">Starter</div>
+                    <div className="text-[11px] text-emerald-600 font-mono font-bold mt-0.5">₹799/mo</div>
+                    <div className="text-[10px] text-slate-400 mt-1">Up to 100 Members</div>
+                  </div>
+
+                  <div 
+                    onClick={() => setCreateForm({ ...createForm, planId: 'growth' })}
+                    className={`p-3 rounded-xl border text-center cursor-pointer transition-all ${
+                      createForm.planId === 'growth' 
+                        ? 'border-emerald-500 bg-emerald-50 text-slate-900 shadow-sm' 
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                    }`}
+                  >
+                    <div className="font-bold text-xs">Growth</div>
+                    <div className="text-[11px] text-emerald-600 font-mono font-bold mt-0.5">₹1,999/mo</div>
+                    <div className="text-[10px] text-slate-400 mt-1">Up to 500 Members</div>
+                  </div>
+
+                  <div 
+                    onClick={() => setCreateForm({ ...createForm, planId: 'pro' })}
+                    className={`p-3 rounded-xl border text-center cursor-pointer transition-all relative ${
+                      createForm.planId === 'pro' 
+                        ? 'border-emerald-500 bg-emerald-50 text-slate-900 shadow-sm' 
+                        : 'border-slate-200 bg-white text-slate-600 hover:border-slate-300'
+                    }`}
+                  >
+                    <span className="absolute -top-2 right-2 bg-gradient-to-r from-amber-500 to-amber-600 text-slate-950 font-black text-[8px] px-1.5 py-0.5 rounded-full uppercase tracking-wider">
+                      Popular
+                    </span>
+                    <div className="font-bold text-xs">Pro</div>
+                    <div className="text-[11px] text-emerald-600 font-mono font-bold mt-0.5">₹3,499/mo</div>
+                    <div className="text-[10px] text-slate-400 mt-1">Unlimited Members</div>
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">Subscription Mode</label>
+                    <select
+                      value={createForm.status}
+                      onChange={(e) => setCreateForm({ ...createForm, status: e.target.value })}
+                      className="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white"
+                    >
+                      <option value="trial">14-Day Free Trial (Active)</option>
+                      <option value="active">Active Paid (30 Days)</option>
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block font-semibold text-slate-700 mb-1">WhatsApp Provider</label>
+                    <select
+                      value={createForm.whatsAppProvider}
+                      onChange={(e) => setCreateForm({ ...createForm, whatsAppProvider: e.target.value })}
+                      className="w-full p-2.5 rounded-xl border border-slate-200 text-xs bg-white"
+                    >
+                      <option value="whatsapp_qr">Direct WhatsApp Web QR (Instant)</option>
+                      <option value="meta">Meta Cloud API (Official)</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              <div className="pt-2 flex justify-end space-x-2.5">
+                <button
+                  type="button"
+                  onClick={() => setShowCreateModal(false)}
+                  className="px-4 py-2.5 rounded-xl bg-slate-100 hover:bg-slate-200 text-slate-700 font-semibold text-xs transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={submittingCreate}
+                  className="px-6 py-2.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-extrabold text-xs shadow-lg shadow-emerald-500/25 transition-all flex items-center space-x-1.5 disabled:opacity-50"
+                >
+                  <span>{submittingCreate ? 'Provisioning...' : '🚀 Provision & Launch Gym'}</span>
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Gym Provisioned Credentials & WhatsApp Share Dialog */}
+      {createdGymResult && (
+        <div 
+          className="fixed inset-0 z-50 bg-slate-950/75 backdrop-blur-sm flex items-center justify-center p-4 animate-in fade-in"
+          onClick={() => setCreatedGymResult(null)}
+        >
+          <div 
+            className="bg-white rounded-3xl max-w-md w-full p-6 sm:p-7 shadow-2xl space-y-5 border border-slate-200 text-xs"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="text-center space-y-1.5">
+              <div className="w-12 h-12 rounded-2xl bg-emerald-100 text-emerald-700 mx-auto flex items-center justify-center shadow-inner">
+                <CheckCircle2 className="w-6 h-6 stroke-[2.5]" />
+              </div>
+              <h3 className="font-extrabold text-slate-900 text-lg">Gym Account Provisioned!</h3>
+              <p className="text-slate-500 text-xs">
+                {createdGymResult.gym?.gymName} is now live on the FitManage platform.
+              </p>
+            </div>
+
+            {/* Credentials Card */}
+            <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200/90 space-y-2 font-mono text-xs">
+              <div className="flex items-center justify-between pb-1.5 border-b border-slate-200">
+                <span className="text-slate-400 font-sans">Gym ID:</span>
+                <span className="font-bold text-slate-800">{createdGymResult.gym?._id}</span>
+              </div>
+              <div className="flex items-center justify-between pb-1.5 border-b border-slate-200">
+                <span className="text-slate-400 font-sans">Owner Name:</span>
+                <span className="font-bold text-slate-800">{createdGymResult.owner?.name}</span>
+              </div>
+              <div className="flex items-center justify-between pb-1.5 border-b border-slate-200">
+                <span className="text-slate-400 font-sans">Login Email:</span>
+                <span className="font-bold text-emerald-700">{createdGymResult.credentials?.email}</span>
+              </div>
+              <div className="flex items-center justify-between pb-1.5 border-b border-slate-200">
+                <span className="text-slate-400 font-sans">Password:</span>
+                <span className="font-bold text-amber-700 bg-amber-50 px-2 py-0.5 rounded border border-amber-200">
+                  {createdGymResult.credentials?.password}
+                </span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-slate-400 font-sans">Plan & Status:</span>
+                <span className="font-bold text-slate-800 uppercase">
+                  {createdGymResult.gym?.subscription?.plan} ({createdGymResult.gym?.subscription?.status})
+                </span>
+              </div>
+            </div>
+
+            {/* Copy WhatsApp Invitation Button */}
+            <div className="space-y-2">
+              <button
+                type="button"
+                onClick={() => copyWhatsAppMessage(createdGymResult)}
+                className={`w-full py-3 rounded-xl font-bold text-xs flex items-center justify-center space-x-2 transition-all shadow-md ${
+                  copiedMessage 
+                    ? 'bg-emerald-600 text-white' 
+                    : 'bg-slate-900 hover:bg-slate-800 text-white'
+                }`}
+              >
+                {copiedMessage ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
+                <span>{copiedMessage ? '✅ Copied to Clipboard!' : '📋 Copy WhatsApp Welcome & Login Message'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  const gymId = createdGymResult.gym?._id;
+                  setCreatedGymResult(null);
+                  if (gymId) handleImpersonate(gymId);
+                }}
+                className="w-full py-2.5 rounded-xl bg-emerald-50 hover:bg-emerald-100 text-emerald-800 font-bold text-xs flex items-center justify-center space-x-1.5 transition-colors border border-emerald-200"
+              >
+                <Eye className="w-4 h-4" />
+                <span>Open Gym Dashboard (Impersonate)</span>
+              </button>
+            </div>
+
+            <div className="pt-1 text-center">
+              <button
+                type="button"
+                onClick={() => setCreatedGymResult(null)}
+                className="text-slate-400 hover:text-slate-600 text-xs font-semibold"
+              >
+                Done / Close
               </button>
             </div>
           </div>

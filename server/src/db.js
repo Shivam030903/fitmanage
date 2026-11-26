@@ -235,6 +235,25 @@ class MongoCollection {
     return null;
   }
 
+  deleteMany(query) {
+    const toRemove = this.find(query);
+    toRemove.forEach(item => {
+      const idx = this.data.findIndex(d => d._id === item._id);
+      if (idx !== -1) {
+        this.data.splice(idx, 1);
+      }
+    });
+    this.saveLocal();
+
+    if (this.atlasCol) {
+      this.atlasCol.deleteMany(query).catch(err => {
+        console.error(`[MongoDB Atlas] deleteMany error in ${this.name}:`, err.message);
+      });
+    }
+
+    return { deletedCount: toRemove.length };
+  }
+
   count(query = {}) {
     return this.find(query).length;
   }

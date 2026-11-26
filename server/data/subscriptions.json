@@ -32,5 +32,37 @@
     "createdAt": "2026-11-26T07:30:34.824Z",
     "_id": "id_1795678234826_jpgv49",
     "updatedAt": "2026-11-26T07:30:34.826Z"
+  },
+  {
+    "gymId": "gym_1795680881618",
+    "gymName": "Titan Fitness Studio",
+    "planId": "pro",
+    "planName": "Pro",
+    "billingCycle": "monthly",
+    "amount": 0,
+    "status": "trial_initiated",
+    "periodStart": "2026-11-26T08:14:41.618Z",
+    "periodEnd": "2026-12-10T08:14:41.618Z",
+    "transactionReference": "ADMIN-ONBOARD-881791",
+    "paidBy": "FitManage SaaS Founder",
+    "createdAt": "2026-11-26T08:14:41.618Z",
+    "_id": "id_1795680881791_q5p1vd",
+    "updatedAt": "2026-11-26T08:14:41.791Z"
+  },
+  {
+    "gymId": "gym_1795680998366",
+    "gymName": "Apex Performance Gym",
+    "planId": "pro",
+    "planName": "Pro",
+    "billingCycle": "monthly",
+    "amount": 0,
+    "status": "trial_initiated",
+    "periodStart": "2026-11-26T08:16:38.366Z",
+    "periodEnd": "2026-12-10T08:16:38.366Z",
+    "transactionReference": "ADMIN-ONBOARD-998533",
+    "paidBy": "FitManage SaaS Founder",
+    "createdAt": "2026-11-26T08:16:38.366Z",
+    "_id": "id_1795680998533_a2yihm",
+    "updatedAt": "2026-11-26T08:16:38.533Z"
   }
 ]

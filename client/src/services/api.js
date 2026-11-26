@@ -163,6 +163,8 @@ export const api = {
     const q = new URLSearchParams(params).toString();
     return request(`/super-admin/gyms${q ? '?' + q : ''}`);
   },
+  superAdminCreateGym: (data) => request('/super-admin/gyms', { method: 'POST', body: JSON.stringify(data) }),
+  superAdminDeleteGym: (gymId) => request(`/super-admin/gyms/${gymId}`, { method: 'DELETE' }),
   superAdminToggleLock: (gymId, data) => request(`/super-admin/gyms/${gymId}/toggle-lock`, { method: 'POST', body: JSON.stringify(data) }),
   superAdminChangePlan: (gymId, data) => request(`/super-admin/gyms/${gymId}/change-plan`, { method: 'POST', body: JSON.stringify(data) }),
   superAdminImpersonate: (gymId) => request(`/super-admin/gyms/${gymId}/impersonate`, { method: 'POST' }),

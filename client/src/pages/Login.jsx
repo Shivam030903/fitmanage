@@ -1,28 +1,23 @@
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Dumbbell, ArrowRight, ShieldCheck, UserCheck, Sparkles } from 'lucide-react';
+import { Dumbbell, ArrowRight, ShieldCheck, UserCheck, Sparkles, Crown, Lock } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 
 export default function Login() {
-  const [tab, setTab] = useState('login'); // 'login' or 'register'
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [name, setName] = useState('');
-  const [phone, setPhone] = useState('');
-  const [gymName, setGymName] = useState('');
-  const [address, setAddress] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const { login, register } = useAuth();
+  const { login } = useAuth();
   const navigate = useNavigate();
 
-  const handleQuickLogin = async (demoEmail, demoPassword) => {
+  const handleQuickLogin = async (demoEmail, demoPassword, targetPath = '/dashboard') => {
     setError('');
     setLoading(true);
     try {
       await login(demoEmail, demoPassword);
-      navigate('/dashboard');
+      navigate(targetPath);
     } catch (err) {
       setError(err.message || 'Login failed.');
     } finally {
@@ -36,12 +31,12 @@ export default function Login() {
     setLoading(true);
 
     try {
-      if (tab === 'login') {
-        await login(email, password);
+      const res = await login(email, password);
+      if (res?.user?.isSuperAdmin || res?.user?.role === 'superadmin') {
+        navigate('/super-admin');
       } else {
-        await register({ name, email, password, phone, gymName, address });
+        navigate('/dashboard');
       }
-      navigate('/dashboard');
     } catch (err) {
       setError(err.message || 'Authentication error.');
     } finally {
@@ -72,55 +67,54 @@ export default function Login() {
         <div className="bg-slate-900/90 border border-emerald-500/30 rounded-2xl p-4 shadow-lg space-y-3">
           <div className="flex items-center space-x-2 text-emerald-400 text-xs font-bold uppercase tracking-wider">
             <Sparkles className="w-4 h-4 text-emerald-400" />
-            <span>1-Click Instant Demo Access</span>
+            <span>1-Click Quick Access</span>
           </div>
           <div className="grid grid-cols-2 gap-2 text-xs">
             <button
               type="button"
               disabled={loading}
-              onClick={() => handleQuickLogin('owner@fitmanage.io', 'password123')}
+              onClick={() => handleQuickLogin('owner@fitmanage.io', 'password123', '/dashboard')}
               className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-emerald-500 hover:text-slate-950 text-slate-200 border border-slate-700 font-semibold transition-all flex flex-col items-center justify-center space-y-1 group"
             >
               <ShieldCheck className="w-4 h-4 text-emerald-400 group-hover:text-slate-950" />
-              <span>Login as Owner</span>
+              <span>Gym Owner</span>
               <span className="text-[10px] text-slate-400 group-hover:text-slate-900 font-normal">Vikram (All Access)</span>
             </button>
 
             <button
               type="button"
               disabled={loading}
-              onClick={() => handleQuickLogin('admin@fitmanage.io', 'password123')}
+              onClick={() => handleQuickLogin('admin@fitmanage.io', 'password123', '/dashboard')}
               className="p-2.5 rounded-xl bg-slate-800/80 hover:bg-emerald-500 hover:text-slate-950 text-slate-200 border border-slate-700 font-semibold transition-all flex flex-col items-center justify-center space-y-1 group"
             >
               <UserCheck className="w-4 h-4 text-teal-400 group-hover:text-slate-950" />
-              <span>Login as Admin</span>
-              <span className="text-[10px] text-slate-400 group-hover:text-slate-900 font-normal">Pooja (Admin Operations)</span>
+              <span>Gym Admin</span>
+              <span className="text-[10px] text-slate-400 group-hover:text-slate-900 font-normal">Pooja (Staff Desk)</span>
             </button>
           </div>
+
+          {/* Super Admin Quick Button */}
+          <button
+            type="button"
+            disabled={loading}
+            onClick={() => handleQuickLogin('superadmin@fitmanage.io', 'password123', '/super-admin')}
+            className="w-full p-2.5 rounded-xl bg-gradient-to-r from-amber-500/10 via-amber-500/20 to-amber-500/10 hover:from-amber-500 hover:to-amber-400 hover:text-slate-950 text-amber-300 border border-amber-500/30 font-bold transition-all flex items-center justify-center space-x-2 group text-xs shadow-sm"
+          >
+            <Crown className="w-4 h-4 text-amber-400 group-hover:text-slate-950" />
+            <span>Login as Super Admin (SaaS Founder)</span>
+          </button>
         </div>
 
-        {/* Main Card */}
+        {/* Main Sign-In Card */}
         <div className="bg-slate-900/80 border border-slate-800 rounded-2xl p-6 sm:p-7 shadow-2xl space-y-5">
-          {/* Tab Switcher */}
-          <div className="flex p-1 bg-slate-950 rounded-xl border border-slate-800">
-            <button
-              type="button"
-              onClick={() => setTab('login')}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-                tab === 'login' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Sign In
-            </button>
-            <button
-              type="button"
-              onClick={() => setTab('register')}
-              className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all ${
-                tab === 'register' ? 'bg-emerald-500 text-slate-950 shadow' : 'text-slate-400 hover:text-white'
-              }`}
-            >
-              Register New Gym
-            </button>
+          <div className="flex items-center justify-between pb-1 border-b border-slate-800/80">
+            <div>
+              <h2 className="text-base font-bold text-white">Sign In to Your Gym</h2>
+              <p className="text-[11px] text-slate-400">Enter your credentials provided by the administrator</p>
+            </div>
+            <span className="px-2.5 py-1 rounded-lg bg-emerald-500/10 text-emerald-400 font-mono text-[10px] font-bold border border-emerald-500/20">
+              Active Fleet
+            </span>
           </div>
 
           {error && (
@@ -130,45 +124,6 @@ export default function Login() {
           )}
 
           <form onSubmit={handleSubmit} className="space-y-4 text-xs">
-            {tab === 'register' && (
-              <>
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Gym / Fitness Studio Name</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Iron Gym & Fitness"
-                    value={gymName}
-                    onChange={(e) => setGymName(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-emerald-500 text-xs"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Owner Full Name</label>
-                  <input
-                    type="text"
-                    required
-                    placeholder="e.g. Vikram Singhania"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-emerald-500 text-xs"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-slate-300 font-semibold mb-1">Gym Mobile Number</label>
-                  <input
-                    type="tel"
-                    placeholder="e.g. 9820012345"
-                    value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3.5 py-2.5 text-white focus:outline-none focus:border-emerald-500 text-xs"
-                  />
-                </div>
-              </>
-            )}
-
             <div>
               <label className="block text-slate-300 font-semibold mb-1">Email Address</label>
               <input
@@ -198,10 +153,18 @@ export default function Login() {
               disabled={loading}
               className="w-full py-3 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs shadow-lg shadow-emerald-500/25 transition-all flex items-center justify-center space-x-2 disabled:opacity-50"
             >
-              <span>{loading ? 'Please wait...' : tab === 'login' ? 'Sign In to FitManage' : 'Create Gym Account'}</span>
+              <span>{loading ? 'Signing in...' : 'Sign In to FitManage'}</span>
               <ArrowRight className="w-4 h-4" />
             </button>
           </form>
+
+          {/* Super Admin Provisioning Note */}
+          <div className="pt-2 border-t border-slate-800/60 flex items-start space-x-2 text-[11px] text-slate-400 bg-slate-950/40 p-3 rounded-xl border">
+            <Lock className="w-3.5 h-3.5 text-amber-400 shrink-0 mt-0.5" />
+            <p>
+              <span className="text-slate-300 font-semibold">Self-registration disabled:</span> All gym accounts are onboarded and managed directly by the platform Super Admin.
+            </p>
+          </div>
         </div>
 
         <p className="text-center text-[11px] text-slate-500">
