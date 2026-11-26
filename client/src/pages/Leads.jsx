@@ -25,6 +25,7 @@ import {
   ExternalLink,
   ChevronRight,
   TrendingUp,
+  RefreshCw,
   X
 } from 'lucide-react';
 import confetti from 'canvas-confetti';
